@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+node/
+chromedriver-win64/
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+storage.rules

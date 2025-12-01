@@ -4,71 +4,45 @@ import {
   BrowserRouter,
   Navigate,
   useLocation,
-} from "react-router-dom";
+} from 'react-router-dom';
 
 import Header from "./pages/Header.jsx";
 import Footer from "./pages/Footer.jsx";
-import Home from "./pages/Home.jsx";
-import AboutUs from "./pages/AboutUs.jsx";
-import ContactUs from "./pages/ContactUs.jsx";
-import Scan from "./components/FoodScan.jsx";
-import Login from "./components/LoginComponent.jsx";
-import SignIn from "./components/SignIn.jsx";
-import PrivateRoute from "./components/PrivateRoute.jsx";
-import Dashboard from "./components/DashBoard.jsx";
-import ScanHistory from "./components/ScanHistory.jsx";
-import ScrollToTopButton from "./components/ScrollToTopButton.jsx";
-import { Toaster } from "react-hot-toast";
-import Profile from "./components/Profile.jsx";
-import ScanTypeSelector from "./components/ScanTypeSelector.jsx";
-import BackButton from "./pages/BackButton.jsx";
-import CosmeticScan from "./components/CosmeticScan.jsx";
-import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
-import { useEffect } from "react";
-
-// -------------------- AdSense Component --------------------
-function AdBlock() {
-  useEffect(() => {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {}
-  }, []);
-
-  return (
-    <ins
-      className="adsbygoogle"
-      style={{ display: "block", marginTop: "0px" }}
-      data-ad-client="ca-pub-4998926240637053"
-      data-ad-slot="1756371155"
-      data-ad-format="auto"
-      data-full-width-responsive="true"
-    ></ins>
-  );
-}
-// -----------------------------------------------------------
+import Home from './pages/Home.jsx';
+import AboutUs from './pages/AboutUs.jsx';
+import ContactUs from './pages/ContactUs.jsx';
+import Scan from './components/FoodScan.jsx';
+import Login from './components/LoginComponent.jsx';
+import SignIn from './components/SignIn.jsx';
+import PrivateRoute from './components/PrivateRoute.jsx';
+import Dashboard from './components/DashBoard.jsx';
+import ScanHistory from './components/ScanHistory.jsx';
+import ScrollToTopButton from './components/ScrollToTopButton.jsx';
+import { Toaster } from 'react-hot-toast';
+import Profile from './components/Profile.jsx';
+import ScanTypeSelector from './components/ScanTypeSelector.jsx';
+import BackButton from './pages/BackButton.jsx';
+import CosmeticScan from './components/CosmeticScan.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 
 function AppContent() {
   const location = useLocation();
 
   const showBackButtonOn = [
-    "/aboutUs",
-    "/contactUs",
-    "/select-scan",
-    "/scan",
-    "/scan-cosmetics",
-    "/dashboard",
-    "/history",
-    "/profile",
-    "/login",
-    "/signin",
-    "/privacy",
+    '/aboutUs',
+    '/contactUs',
+    '/select-scan',
+    '/scan',
+    '/scan-cosmetics',
+    '/dashboard',
+    '/history',
+    '/profile',
+    '/login',
+    '/signin',
+    '/privacy'
   ];
 
   const shouldShowBackButton = showBackButtonOn.includes(location.pathname);
-
-  // Only show ads on high-content pages
-  const contentPages = ["/", "/aboutUs", "/contactUs", "/privacy"];
-  const shouldShowAds = contentPages.includes(location.pathname);
 
   return (
     <div className="relative flex flex-col min-h-screen bg-white overflow-x-hidden">
@@ -131,17 +105,11 @@ function AppContent() {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
+           <Route path="/privacy" element={<PrivacyPolicy />} />
+
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
-
-      {/* ---- AdSense only on allowed pages ---- */}
-      {shouldShowAds && (
-        <div className="max-w-3xl mx-auto w-full px-4 pb-2">
-          <AdBlock />
-        </div>
-      )}
 
       <Footer />
       <ScrollToTopButton />
