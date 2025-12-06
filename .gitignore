@@ -30,3 +30,4 @@ firebase.json
 firestore.rules
 firestore.indexes.json
 storage.rules
+.env.local

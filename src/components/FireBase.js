@@ -5,13 +5,13 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth"; // ✅ Add GoogleAu
 import { getFirestore } from "firebase/firestore"; // ✅ Firestore
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAiPEY4j9CLs0vdB5h_bC8FgYTgV2ofB1s",
-  authDomain: "smartfoodanalyzer.firebaseapp.com",
-  projectId: "smartfoodanalyzer",
-  storageBucket: "smartfoodanalyzer.firebasestorage.app",
-  messagingSenderId: "93720725745",
-  appId: "1:93720725745:web:abd2446f8732a48d79c150",
-  measurementId: "G-WKZJWW70NT"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
