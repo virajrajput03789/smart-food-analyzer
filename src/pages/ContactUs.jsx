@@ -114,11 +114,34 @@ const ContactUs = () => {
   const [submitError, setSubmitError] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // EmailJS configuration - UPDATE THESE WITH YOUR CREDENTIALS
-  const EMAILJS_SERVICE_ID = 'service_hljagx7'; // Your Service ID
-  const EMAILJS_TEMPLATE_ID = 'template_kpi4zrg'; // Your Template ID
-  const EMAILJS_PUBLIC_KEY = 'NHL6Bl5u1sBwGXhrk'; // Your Public Key
-  const YOUR_EMAIL = 'purescan.helpdesk@gmail.com'; // Your email where you want to receive messages
+// In ContactUs.jsx - Add at top after imports
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const YOUR_EMAIL = import.meta.env.VITE_YOUR_EMAIL;
+
+// Add validation useEffect
+useEffect(() => {
+  // Debug: Check if environment variables are loading
+  console.log('Environment check:', {
+    mode: import.meta.env.MODE,
+    firebaseKeyExists: !!import.meta.env.VITE_FIREBASE_API_KEY,
+    emailjsServiceExists: !!import.meta.env.VITE_EMAILJS_SERVICE_ID,
+    emailjsTemplateExists: !!import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+    emailjsPublicKeyExists: !!import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+  });
+
+  if (!import.meta.env.VITE_EMAILJS_SERVICE_ID || 
+      !import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 
+      !import.meta.env.VITE_EMAILJS_PUBLIC_KEY) {
+    console.error('❌ EmailJS environment variables are missing!');
+    console.error('Please check your .env file');
+  }
+  
+  if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+    console.error('❌ Firebase environment variables are missing!');
+  }
+}, []);
 
   // Mobile detection with throttling
   useEffect(() => {
