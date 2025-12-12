@@ -4,6 +4,17 @@ import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from './FireBase';
 import { motion } from 'framer-motion';
 
+// top of your LoginComponent.jsx (after imports)
+const originalConsole = { ...console };
+
+// Ignore only COOP warnings
+console.warn = (msg, ...args) => {
+  if (!msg.includes('Cross-Origin-Opener-Policy')) {
+    originalConsole.warn(msg, ...args);
+  }
+};
+
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,12 +23,11 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('✅ Logged in:', userCredential.user);
+      await signInWithEmailAndPassword(auth, email, password);
       navigate("/select-scan", { replace: true });
     } catch (error) {
-      console.error('❌ Login error:', error.code, error.message);
       alert('Login failed: ' + error.code);
+      console.error('Login error:', error.code, error.message);
     }
   };
 
@@ -25,11 +35,17 @@ const Login = () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      console.log('✅ Google login:', user.displayName, user.email);
+
+      // Send message to parent window (safe for COOP)
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ loggedIn: true }, "*");
+        window.close();
+      }
+
       navigate("/select-scan", { replace: true });
     } catch (error) {
-      console.error('❌ Google login error:', error.code, error.message);
       alert('Google login failed: ' + error.code);
+      console.error('Google login error:', error.code, error.message);
     }
   };
 
@@ -84,16 +100,13 @@ const Login = () => {
               whileHover={{ scale: 1.01 }}
               className="relative transition duration-300"
             >
-
-              {/* FLOATING LABEL */}
               <label className="absolute left-4 top-2 text-xs text-gray-500 peer-focus:text-green-600 peer-focus:top-1 transition-all pointer-events-none">
                 {i === 0 ? 'Email address' : 'Password'}
               </label>
 
-              {/* INPUT FIELD FIXED + PLACEHOLDER */}
               <motion.input
                 type={i === 0 ? 'email' : 'password'}
-                placeholder={i === 0 ? "Enter your email" : "Enter your password"}  // ⭐ Added
+                placeholder={i === 0 ? "Enter your email" : "Enter your password"}
                 value={i === 0 ? email : password}
                 onChange={(e) => i === 0 ? setEmail(e.target.value) : setPassword(e.target.value)}
                 required
@@ -161,4 +174,5 @@ const Login = () => {
 };
 
 export default Login;
+
 
