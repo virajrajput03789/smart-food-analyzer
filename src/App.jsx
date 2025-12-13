@@ -24,6 +24,7 @@ import ScanTypeSelector from './components/ScanTypeSelector.jsx';
 import BackButton from './pages/BackButton.jsx';
 import CosmeticScan from './components/CosmeticScan.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import Help from './pages/Help.jsx';
 
 function AppContent() {
   const location = useLocation();
@@ -39,7 +40,8 @@ function AppContent() {
     '/profile',
     '/login',
     '/signin',
-    '/privacy'
+    '/privacy',
+    '/help'
   ];
 
   const shouldShowBackButton = showBackButtonOn.includes(location.pathname);
@@ -106,7 +108,7 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/signin" element={<SignIn />} />
            <Route path="/privacy" element={<PrivacyPolicy />} />
-
+           <Route path='/help' element={<Help/>}/>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

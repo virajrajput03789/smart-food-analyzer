@@ -1,14 +1,414 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from './FireBase';
-import { motion } from 'framer-motion';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  animate,
+  AnimatePresence
+} from 'framer-motion';
+import Particles from 'react-tsparticles';
+
+// Optimized Micro Interaction Component
+const MicroInteraction = ({ type, x, y, color, isMobile }) => {
+  if (type === 'sparkle') {
+    return (
+      <motion.div
+        className="absolute pointer-events-none"
+        initial={{ x, y, scale: 0, opacity: 0 }}
+        animate={{
+          scale: [0, 1.2, 0],
+          opacity: [0, 1, 0],
+          rotate: [0, 180]
+        }}
+        transition={{ duration: isMobile ? 0.4 : 0.6 }}
+        style={{
+          width: isMobile ? '16px' : '20px',
+          height: isMobile ? '16px' : '20px',
+          background: `radial-gradient(circle, ${color}60, transparent 70%)`,
+          borderRadius: '50%'
+        }}
+      />
+    );
+  }
+  
+  if (type === 'pulse') {
+    return (
+      <motion.div
+        className="absolute pointer-events-none rounded-full"
+        initial={{ x: x - (isMobile ? 10 : 15), y: y - (isMobile ? 10 : 15), scale: 0, opacity: 0.7 }}
+        animate={{
+          scale: [0, 1.5],
+          opacity: [0.7, 0]
+        }}
+        transition={{ duration: isMobile ? 0.6 : 0.8 }}
+        style={{
+          width: isMobile ? '24px' : '30px',
+          height: isMobile ? '24px' : '30px',
+          background: color,
+          filter: 'blur(4px)'
+        }}
+      />
+    );
+  }
+  
+  return null;
+};
+
+// Optimized Interactive Background
+const InteractiveBackground = React.memo(({ isMobile }) => {
+  const [interactions, setInteractions] = useState([]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.7 && interactions.length < (isMobile ? 4 : 8)) {
+        const type = Math.random() > 0.5 ? 'sparkle' : 'pulse';
+        const colors = ['#10B981', '#34D399', '#22C55E', '#059669'];
+        setInteractions(prev => [...prev.slice(-(isMobile ? 3 : 5)), {
+          id: Date.now(),
+          type,
+          x: Math.random() * 100 + '%',
+          y: Math.random() * 100 + '%',
+          color: colors[Math.floor(Math.random() * colors.length)]
+        }]);
+      }
+    }, isMobile ? 1200 : 800);
+    
+    return () => clearInterval(interval);
+  }, [interactions.length, isMobile]);
+  
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      setInteractions(prev => prev.filter(int => Date.now() - int.id < 2000));
+    }, 1000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <AnimatePresence>
+        {interactions.map(interaction => (
+          <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+// Optimized Floating Icon Component
+const FloatingIcon = React.memo(({ icon, color, initialX, initialY, delay, isMobile }) => (
+  <motion.div
+    className="absolute pointer-events-none"
+    initial={{ x: initialX, y: initialY, scale: 0, opacity: 0 }}
+    animate={{
+      scale: [0, 1, 1, 0],
+      opacity: [0, 1, 1, 0],
+      y: [initialY, initialY - (isMobile ? 60 : 100)],
+      rotate: [0, 360]
+    }}
+    transition={{
+      duration: isMobile ? 3 : 4,
+      delay,
+      repeat: Infinity,
+      repeatDelay: Math.random() * 10 + 5
+    }}
+    style={{
+      color,
+      fontSize: isMobile ? '18px' : '24px',
+      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))'
+    }}
+  >
+    {icon}
+  </motion.div>
+));
+
+// Optimized Ripple Component
+const RippleEffect = React.memo(({ ripple }) => (
+  <motion.div
+    className="absolute pointer-events-none rounded-full"
+    initial={{
+      scale: 0,
+      opacity: 0.7,
+      x: ripple.x - (ripple.isMobile ? 15 : 20),
+      y: ripple.y - (ripple.isMobile ? 15 : 20),
+      width: ripple.isMobile ? 30 : 40,
+      height: ripple.isMobile ? 30 : 40,
+      background: `radial-gradient(circle, ${ripple.color}, ${ripple.color.replace('0.6', '0.2')})`
+    }}
+    animate={{
+      scale: [0, ripple.isMobile ? 3 : 4, ripple.isMobile ? 3.5 : 5],
+      opacity: [0.7, 0.3, 0],
+      width: [
+        ripple.isMobile ? 30 : 40, 
+        ripple.isMobile ? 120 : 160, 
+        ripple.isMobile ? 140 : 200
+      ],
+      height: [
+        ripple.isMobile ? 30 : 40, 
+        ripple.isMobile ? 120 : 160, 
+        ripple.isMobile ? 140 : 200
+      ],
+      x: [
+        ripple.x - (ripple.isMobile ? 15 : 20), 
+        ripple.x - (ripple.isMobile ? 60 : 80), 
+        ripple.x - (ripple.isMobile ? 70 : 100)
+      ],
+      y: [
+        ripple.y - (ripple.isMobile ? 15 : 20), 
+        ripple.y - (ripple.isMobile ? 60 : 80), 
+        ripple.y - (ripple.isMobile ? 70 : 100)
+      ]
+    }}
+    exit={{ opacity: 0 }}
+    transition={{
+      duration: ripple.isMobile ? 0.9 : 1.2,
+      ease: "easeOut"
+    }}
+    style={{
+      filter: `blur(${ripple.isMobile ? 8 : 12}px)`,
+      mixBlendMode: "screen"
+    }}
+  />
+));
 
 const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [ripples, setRipples] = useState([]);
+  const [hoverGlow, setHoverGlow] = useState({ x: 0, y: 0, active: false });
+  const [isMobile, setIsMobile] = useState(false);
+  const [touchPosition, setTouchPosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
   const navigate = useNavigate();
+
+  // Optimized mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(checkMobile, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, []);
+
+  // Optimized mouse tracking
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const cardX = useMotionValue(0);
+  const cardY = useMotionValue(0);
+
+  // Optimized scroll animations
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+  
+  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, isMobile ? 0.98 : 0.95]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, isMobile ? 0.9 : 0.8]);
+  
+  const heroScaleSpring = useSpring(heroScale, { 
+    stiffness: isMobile ? 180 : 200, 
+    damping: isMobile ? 40 : 35 
+  });
+
+  // Optimized ripple effect handler
+  const handleInteraction = useCallback((e) => {
+    const target = e.target;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.closest('button') ||
+      target.closest('a')
+    ) {
+      return;
+    }
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    let clientX, clientY;
+    if (e.type.includes('touch')) {
+      const touch = e.touches?.[0] || e.changedTouches?.[0];
+      if (!touch) return;
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const colors = [
+      'rgba(16, 185, 129, 0.6)',
+      'rgba(52, 211, 153, 0.6)',
+      'rgba(34, 197, 94, 0.6)',
+      'rgba(5, 150, 105, 0.6)'
+    ];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+
+    const newRipple = {
+      id: Date.now(),
+      x,
+      y,
+      color,
+      isMobile
+    };
+
+    setRipples(prev => [...prev.slice(-5), newRipple]);
+
+    setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
+    }, isMobile ? 900 : 1200);
+  }, [isMobile]);
+
+  // Optimized move handler
+  const handleMove = useCallback((e) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    let clientX, clientY;
+    if (e.type.includes('touch')) {
+      const touch = e.touches[0];
+      if (!touch) return;
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    setTouchPosition({ x, y });
+    
+    if (!isMobile) {
+      setHoverGlow({ x, y, active: true });
+    }
+  }, [isMobile]);
+
+  // Optimized mouse effects for desktop
+  useEffect(() => {
+    if (isMobile) return;
+
+    const onMove = (e) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const nx = (e.clientX - rect.left) / rect.width - 0.5;
+      const ny = (e.clientY - rect.top) / rect.height - 0.5;
+      
+      mouseX.set(nx);
+      mouseY.set(ny);
+      
+      cardX.set(nx * 15);
+      cardY.set(ny * 10);
+    };
+
+    const onLeave = () => {
+      animate(mouseX, 0, { type: "spring", stiffness: 100, damping: 15 });
+      animate(mouseY, 0, { type: "spring", stiffness: 100, damping: 15 });
+      animate(cardX, 0, { type: "spring", stiffness: 90, damping: 15 });
+      animate(cardY, 0, { type: "spring", stiffness: 90, damping: 15 });
+      setHoverGlow(prev => ({ ...prev, active: false }));
+    };
+
+    const node = containerRef.current;
+    if (node) {
+      node.addEventListener("pointermove", onMove);
+      node.addEventListener("pointerleave", onLeave);
+    }
+    
+    return () => {
+      if (node) {
+        node.removeEventListener("pointermove", onMove);
+        node.removeEventListener("pointerleave", onLeave);
+      }
+    };
+  }, [isMobile, mouseX, mouseY, cardX, cardY]);
+
+  // Optimized 3D rotation for card
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], isMobile ? [0, 0] : [2, -2]);
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], isMobile ? [0, 0] : [-1.5, 1.5]);
+  const rotateYSpring = useSpring(rotateY, { stiffness: 200, damping: 25 });
+  const rotateXSpring = useSpring(rotateX, { stiffness: 200, damping: 25 });
+
+  // Optimized Particle options
+  const particleOptions = useMemo(() => ({
+    particles: {
+      number: { 
+        value: isMobile ? 40 : 60, 
+        density: { 
+          enable: true, 
+          value_area: isMobile ? 500 : 700 
+        } 
+      },
+      color: { value: ["#22c55e", "#10b981", "#34d399", "#059669"] },
+      shape: { type: "circle" },
+      opacity: { 
+        value: isMobile ? 0.12 : 0.15, 
+        random: true,
+      },
+      size: { 
+        value: isMobile ? 2 : 2.5, 
+        random: true,
+      },
+      move: {
+        enable: true,
+        speed: isMobile ? 0.3 : 0.4,
+        direction: "none",
+        random: true,
+        straight: false,
+        outMode: "bounce",
+      }
+    },
+    interactivity: {
+      events: {
+        onhover: { enable: !isMobile, mode: "repulse" },
+        onclick: { enable: true, mode: "push" }
+      }
+    },
+    detectRetina: true
+  }), [isMobile]);
+
+  // Fixed floating icons positions
+  const floatingIconsConfig = useMemo(() => [
+    {icon: '🍏', color: '#10B981', x: -30, y: -20},
+    {icon: '🥦', color: '#34D399', x: 40, y: -10},
+    {icon: '🔒', color: '#22C55E', x: 20, y: 30},
+    {icon: '📱', color: '#059669', x: -20, y: 35},
+    {icon: '⭐', color: '#7C3AED', x: 35, y: -30}
+  ], []);
+
+  // Cleanup ripples
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRipples(prev => prev.filter(r => Date.now() - r.id < 1500));
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -23,152 +423,363 @@ const Signup = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="flex items-center justify-center min-h-screen px-4 relative overflow-hidden"
+    <div 
+      ref={containerRef}
+      onClick={handleInteraction}
+      onTouchStart={handleInteraction}
+      onTouchMove={handleMove}
+      onMouseMove={!isMobile ? handleMove : undefined}
+      onMouseLeave={() => !isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
+      onTouchEnd={() => isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
+      className="relative min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default"
+      style={{
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'pan-y'
+      }}
     >
-
-      {/* 🌟 Floating Ambient Glow Lights */}
-      <motion.div
-        className="absolute top-10 left-10 w-64 h-64 rounded-full bg-green-300/30 blur-3xl"
-        animate={{ y: [0, 20, 0], x: [0, -20, 0], opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-10 right-10 w-72 h-72 rounded-full bg-green-400/20 blur-3xl"
-        animate={{ y: [0, -25, 0], x: [0, 25, 0], opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+      {/* Interactive Background Layer */}
+      <InteractiveBackground isMobile={isMobile} />
+      
+      {/* Optimized Particle Background */}
+      <Particles
+        className="absolute inset-0 -z-10"
+        options={particleOptions}
+        key={isMobile ? 'mobile' : 'desktop'}
       />
 
-      <motion.div
-        whileHover={{
-          scale: 1.01,
-          rotateX: 2,
-          rotateY: -3,
-          boxShadow: "0 12px 40px rgba(16,185,129,0.25)"
-        }}
-        transition={{ type: "spring", stiffness: 150, damping: 12 }}
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md p-10 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-200 backdrop-blur-md bg-white/80 relative overflow-hidden"
-      >
+      {/* Ripple Effects Container */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+        <AnimatePresence>
+          {ripples.map(ripple => (
+            <RippleEffect key={ripple.id} ripple={ripple} />
+          ))}
+        </AnimatePresence>
 
-        {/* 🟢 Animated Top Glow Line */}
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 1 }}
-          className="absolute top-0 left-0 h-[3px] bg-gradient-to-r from-green-400 to-teal-400"
-        />
-
-        {/* 🌈 Heading */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center space-y-2 mb-8"
-        >
-          <motion.h2
-            whileHover={{
-              scale: 1.06,
-              textShadow: "0px 0px 16px rgba(34,197,94,0.8)"
-            }}
-            className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-500 tracking-wide animate-pulse"
-          >
-            Create an Account
-          </motion.h2>
-
+        {/* Hover Glow (Desktop only) */}
+        {!isMobile && (
           <motion.div
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5 }}
-            className="h-1 bg-green-500 w-24 mx-auto rounded origin-left"
+            className="absolute pointer-events-none rounded-full"
+            animate={{
+              scale: hoverGlow.active ? 1 : 0,
+              opacity: hoverGlow.active ? 0.2 : 0,
+              x: hoverGlow.x - 60,
+              y: hoverGlow.y - 60
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 150,
+              damping: 20
+            }}
+            style={{
+              width: 120,
+              height: 120,
+              background: "radial-gradient(circle, rgba(34,197,94,0.3), rgba(16,185,129,0.1), transparent 70%)",
+              filter: "blur(15px)"
+            }}
           />
-        </motion.div>
+        )}
 
-        {/* ✨ Form */}
-        <form className="space-y-6" onSubmit={handleSignup}>
-          {[
-            { value: name, set: setName, type: 'text', placeholder: 'Full Name' },
-            { value: email, set: setEmail, type: 'email', placeholder: 'Email' },
-            { value: password, set: setPassword, type: 'password', placeholder: 'Password' }
-          ].map((field, i) => (
+        {/* Touch/Mouse Trail Effect */}
+        <motion.div
+          className="absolute pointer-events-none rounded-full"
+          animate={{
+            x: touchPosition.x - (isMobile ? 6 : 8),
+            y: touchPosition.y - (isMobile ? 6 : 8)
+          }}
+          transition={{
+            type: "spring",
+            stiffness: isMobile ? 500 : 400,
+            damping: isMobile ? 30 : 25
+          }}
+          style={{
+            width: isMobile ? 12 : 16,
+            height: isMobile ? 12 : 16,
+            background: "radial-gradient(circle, rgba(34,197,94,0.15), rgba(16,185,129,0.03))",
+            border: `1px solid rgba(34,197,94,${isMobile ? 0.15 : 0.2})`,
+            filter: 'blur(0.5px)'
+          }}
+        />
+      </div>
+
+      {/* Background Orbs - EXACTLY SAME AS HOME PAGE */}
+      <motion.div
+        className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ 
+          opacity: isMobile ? 0.08 : 0.12,
+          scale: [1, isMobile ? 1.05 : 1.08, 1],
+        }}
+        transition={{ 
+          duration: 8, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+      >
+        <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300/40 via-emerald-300/30 to-teal-200/30 blur-[80px]" />
+      </motion.div>
+
+      <motion.div
+        className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ 
+          opacity: isMobile ? 0.06 : 0.1,
+          scale: [1, isMobile ? 1.03 : 1.05, 1],
+        }}
+        transition={{ 
+          duration: 7, 
+          repeat: Infinity, 
+          ease: "easeInOut",
+          delay: 0.5
+        }}
+      >
+        <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200/30 via-emerald-200/20 to-green-300/20 blur-[60px]" />
+      </motion.div>
+
+      {/* Main Content Container */}
+      <motion.div
+        style={{ 
+          scale: heroScaleSpring,
+          opacity: heroOpacity
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 w-full max-w-md px-4"
+      >
+        {/* Signup Card */}
+        <motion.div
+          style={{ 
+            rotateY: rotateYSpring,
+            rotateX: rotateXSpring,
+            x: cardX,
+            y: cardY
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative group"
+        >
+          {/* Card Background Glow */}
+          <motion.div
+            className="absolute -inset-3 -z-10 rounded-3xl"
+            animate={{
+              opacity: [0.08, 0.15, 0.08],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            style={{
+              background: "radial-gradient(circle at center, rgba(34,197,94,0.12), transparent 70%)",
+              filter: "blur(20px)"
+            }}
+          />
+
+          {/* Main Card */}
+          <div className="relative bg-white/85 backdrop-blur-sm rounded-2xl border border-green-100/50 shadow-xl p-6 sm:p-8">
+            
+            {/* Header - SAME AS HOME PAGE STYLE */}
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.2 }}
-              whileHover={{ scale: 1.02 }}
-              className="relative transition duration-300"
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-center mb-8"
             >
-              {/* Input */}
-              <motion.input
-                type={field.type}
-                placeholder={field.placeholder}
-                value={field.value}
-                onChange={(e) => field.set(e.target.value)}
-                required
-                whileFocus={{
-                  scale: 1.02,
-                  boxShadow: "0 0 8px rgba(16,185,129,0.35)"
+              <motion.h2
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                 }}
-                className="w-full px-4 pt-5 pb-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-600 bg-white/90 backdrop-blur-sm transition-all duration-300"
-              />
-
-              {/* Floating border highlight */}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                className="font-bold text-3xl sm:text-4xl mb-3"
+                style={{
+                  background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+                  backgroundSize: '300% 300%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent'
+                }}
+              >
+                Create Your Account
+              </motion.h2>
+              
+              <motion.p
+                animate={{ 
+                  opacity: [0.7, 0.9, 0.7],
+                }}
+                transition={{ 
+                  duration: 4, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="text-gray-600 text-sm sm:text-base"
+              >
+                Start your health journey with us
+              </motion.p>
+              
+              {/* Underline - SAME AS HOME PAGE */}
               <motion.div
-                initial={{ scaleX: 0 }}
-                whileFocus={{ scaleX: 1 }}
-                className="absolute bottom-0 left-0 w-full h-[2px] bg-green-500 origin-left"
+                className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mt-3"
+                initial={{ width: 0 }}
+                animate={{ width: "100px" }}
+                transition={{ duration: 0.8, delay: 0.3 }}
               />
             </motion.div>
-          ))}
 
-          {/* Button */}
-          <motion.button
-            type="submit"
-            whileHover={{
-              scale: 1.06,
-              backgroundColor: "#059669",
-              boxShadow: "0px 6px 20px rgba(34,197,94,0.35)"
-            }}
-            whileTap={{ scale: 0.94 }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="w-full bg-green-600 text-white py-2.5 rounded-md font-medium hover:bg-green-700 shadow-md hover:shadow-xl transition-all duration-300"
-          >
-            Sign Up
-          </motion.button>
-        </form>
+            {/* FORM */}
+            <form className="space-y-5" onSubmit={handleSignup}>
+              {/* Name Input */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <motion.input
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  whileFocus={{ 
+                    boxShadow: "0px 0px 0px 2px rgba(34,197,94,0.2)",
+                    borderColor: "#22C55E"
+                  }}
+                  className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
+                  focus:outline-none transition-all duration-300
+                  hover:border-green-300"
+                />
+              </div>
 
-        {/* 🔗 Login Link */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          whileHover={{ scale: 1.02 }}
-          className="text-sm text-center text-gray-600 mt-6"
-        >
-          Already have an account?{' '}
-          <motion.span
-            whileHover={{
-              x: 2,
-              color: "#059669",
-              textDecoration: "underline"
-            }}
-            className="inline-block"
-          >
-            <Link to="/login" className="text-green-700 font-medium">
-              Log in
-            </Link>
-          </motion.span>
-        </motion.p>
+              {/* Email Input */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Email Address
+                </label>
+                <motion.input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  whileFocus={{ 
+                    boxShadow: "0px 0px 0px 2px rgba(34,197,94,0.2)",
+                    borderColor: "#22C55E"
+                  }}
+                  className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
+                  focus:outline-none transition-all duration-300
+                  hover:border-green-300"
+                />
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <motion.input
+                  type="password"
+                  placeholder="Create a strong password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  whileFocus={{ 
+                    boxShadow: "0px 0px 0px 2px rgba(34,197,94,0.2)",
+                    borderColor: "#22C55E"
+                  }}
+                  className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
+                  focus:outline-none transition-all duration-300
+                  hover:border-green-300"
+                />
+              </div>
+
+              {/* Signup Button - SAME AS HOME PAGE BUTTON */}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                whileHover={{
+                  scale: 1.02,
+                  boxShadow: "0px 6px 20px rgba(5, 150, 105, 0.3)"
+                }}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                type="submit"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-md transition-all duration-300"
+              >
+                Create Account
+              </motion.button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-gray-500">
+                  Already have an account?
+                </span>
+              </div>
+            </div>
+
+            {/* Login Link - FIXED DOM NESTING */}
+            <div className="text-center">
+              <div className="text-sm text-gray-600">
+                <Link
+                  to="/login"
+                  className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group"
+                >
+                  <span>Login to your account</span>
+                  <motion.span
+                    animate={{ x: [0, 2, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="text-green-600"
+                  >
+                    →
+                  </motion.span>
+                  {/* Underline effect using span instead of div */}
+                  <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-green-500 to-emerald-500 group-hover:w-full transition-all duration-300" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Footer Note */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-500">
+                By creating an account, you agree to our{' '}
+                <Link to="/terms" className="text-green-600 hover:underline">
+                  Terms
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="text-green-600 hover:underline">
+                  Privacy Policy
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* Floating Icons (Desktop only) - FIXED LAG ISSUE */}
+          {!isMobile && (
+            <div className="absolute -top-4 -right-4 -bottom-4 -left-4 pointer-events-none">
+              {floatingIconsConfig.map((item, idx) => (
+                <FloatingIcon
+                  key={idx}
+                  icon={item.icon}
+                  color={item.color}
+                  initialX={item.x}
+                  initialY={item.y}
+                  delay={idx * 0.5}
+                  isMobile={isMobile}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
 

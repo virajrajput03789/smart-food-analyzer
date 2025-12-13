@@ -377,7 +377,7 @@ const AboutUs = () => {
       onMouseMove={!isMobile ? handleMove : undefined}
       onMouseLeave={() => !isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
       onTouchEnd={() => isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      className="relative min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default"
+      className="relative min-h-screen flex flex-col bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default px-4"
       style={{
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'pan-y'
@@ -640,94 +640,160 @@ const AboutUs = () => {
       )}
 
       {/* Main Content */}
-      <motion.div
-        style={{ 
-          scale: heroScaleSpring,
-          opacity: heroOpacity
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        className="relative z-10 w-full px-4 sm:px-6 lg:px-12 py-8 sm:py-12"
-      >
-        {/* Hero Card */}
-        <motion.main
+      <div className="relative z-10 flex-grow py-8 sm:py-12">
+        <motion.div
           style={{ 
-            y: heroYSpring, 
-            opacity: heroOpacity,
-            rotateY: rotateYSpring, 
-            rotateX: rotateXSpring 
+            scale: heroScaleSpring,
+            opacity: heroOpacity
           }}
-          whileHover={{ 
-            scale: !isMobile ? 1.018 : 1,
-            boxShadow: !isMobile ? "0 20px 70px rgba(16,185,129,0.35)" : "0 10px 40px rgba(16,185,129,0.2)" 
-          }}
-          transition={{ type: "spring", stiffness: 130, damping: 18 }}
-          className={`
-            bg-white/80 backdrop-blur-xl rounded-3xl shadow-3xl max-w-4xl mx-auto w-full 
-            ${isMobile ? 'mt-12 p-6 sm:p-8 space-y-8' : 'mt-16 p-12 space-y-14'} 
-            text-gray-800 border border-white/30
-          `}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="text-gray-900 px-4 sm:px-6 lg:px-8"
         >
-          {/* Header with Mobile Optimization */}
-          <motion.div 
-            whileHover={{ scale: 1.02 }} 
-            className="text-center space-y-3"
+          {/* Hero Section */}
+          <motion.section
+            style={{ y: heroYSpring }}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto mb-12 sm:mb-16 relative"
           >
-            <motion.h1
-              initial={{ y: -24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              whileHover={!isMobile ? { 
-                scale: 1.1, 
-                textShadow: "0px 0px 22px rgba(34,197,94,0.85)" 
-              } : {}}
-              className={`
-                font-bold text-green-700 tracking-tight
-                ${isMobile ? 'text-3xl sm:text-4xl' : 'text-5xl sm:text-6xl'}
-              `}
-            >
-              About Us
-            </motion.h1>
+            {/* Hero Background Glow */}
+            {!isMobile && (
+              <motion.div
+                className="absolute inset-0 -z-10 rounded-3xl"
+                animate={{
+                  opacity: [0.1, 0.2, 0.1],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                style={{
+                  background: "radial-gradient(circle at center, rgba(34,197,94,0.15), transparent 70%)",
+                  filter: "blur(40px)"
+                }}
+              />
+            )}
+
             <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 0.5 }}
-              className={`h-1 bg-green-500 rounded origin-left mx-auto ${
-                isMobile ? 'w-24' : 'w-32'
-              }`}
-            />
-          </motion.div>
-
-          {/* Content with Mobile Optimization */}
-          <div className={`space-y-${isMobile ? '8' : '14'} text-center`}>
-            {/* Paragraphs */}
-            {[
-              "PureScan is built to help people make better food choices. It scans food items, evaluates their nutritional quality, and helps users stay aware of what they consume daily.",
-              "Our goal is to simplify food awareness using modern technology and science-backed nutrition data — so that choosing healthy products becomes effortless."
-            ].map((text, i) => (
-              <motion.p
-                key={i}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: i * 0.25 }}
-                whileHover={!isMobile ? { 
-                  scale: 1.05, 
-                  color: "#065f46", 
-                  x: 4, 
-                  textShadow: "0px 0px 6px rgba(16,185,129,0.25)" 
-                } : {}}
-                className={`
-                  leading-relaxed cursor-default
-                  ${isMobile ? 'text-base sm:text-lg' : 'text-lg'}
-                `}
+              className="text-center"
+              whileHover={!isMobile ? { scale: 1.02 } : undefined}
+            >
+              <motion.h1
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : 'text-5xl sm:text-6xl'} mb-6`}
+                style={{
+                  background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+                  backgroundSize: '300% 300%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent'
+                }}
               >
-                {text}
+                About Us
+              </motion.h1>
+              
+              {/* Animated Underline */}
+              <motion.div
+                className={`bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-8 ${isMobile ? 'h-0.5' : 'h-1'}`}
+                initial={{ width: 0 }}
+                animate={{ width: "200px" }}
+                transition={{ duration: 1.5, delay: 0.5 }}
+                whileHover={!isMobile ? { scaleY: 2 } : undefined}
+              />
+              
+              <motion.p
+                animate={{ 
+                  opacity: [0.9, 1, 0.9],
+                  y: [0, -2, 0]
+                }}
+                transition={{ 
+                  duration: 4, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className={`text-gray-700 max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : 'text-xl'}`}
+              >
+                PureScan is built to help people make better food choices. 
+                <span className="block mt-2 text-green-600 font-semibold">
+                  Your health companion in every scan.
+                </span>
               </motion.p>
-            ))}
+            </motion.div>
+          </motion.section>
 
-            {/* Sections */}
+          {/* Content Sections - PRIVACY POLICY STYLE */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ 
+              once: true,
+              amount: isMobile ? 0.1 : 0.3,
+              margin: isMobile ? "0px" : "-100px"
+            }}
+            variants={{ 
+              hidden: { opacity: 0 },
+              visible: { 
+                opacity: 1,
+                transition: { staggerChildren: isMobile ? 0.1 : 0.15 }
+              }
+            }}
+            className="max-w-4xl mx-auto"
+          >
+            {/* Paragraphs */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="group relative cursor-pointer mb-8"
+            >
+              {/* Card Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500 p-6" />
+              
+              <div className="relative p-6">
+                <motion.p 
+                  whileHover={!isMobile ? { x: 5 } : undefined}
+                  className="text-gray-600 leading-relaxed text-center"
+                >
+                  PureScan is built to help people make better food choices. It scans food items, evaluates their nutritional quality, and helps users stay aware of what they consume daily.
+                </motion.p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="group relative cursor-pointer mb-8"
+            >
+              {/* Card Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500 p-6" />
+              
+              <div className="relative p-6">
+                <motion.p 
+                  whileHover={!isMobile ? { x: 5 } : undefined}
+                  className="text-gray-600 leading-relaxed text-center"
+                >
+                  Our goal is to simplify food awareness using modern technology and science-backed nutrition data — so that choosing healthy products becomes effortless.
+                </motion.p>
+              </div>
+            </motion.div>
+
+            {/* Sections in Privacy Policy Style */}
             {[
               { 
                 title: "Our Mission", 
@@ -736,7 +802,7 @@ const AboutUs = () => {
               { 
                 title: "Why Choose Us", 
                 content: (
-                  <ul className="list-disc list-inside text-left inline-block space-y-2">
+                  <ul className="list-disc pl-6 space-y-2">
                     {[
                       "Instant product scanning and nutrition analysis",
                       "AI-based health recommendations",
@@ -744,19 +810,7 @@ const AboutUs = () => {
                       "Minimal design, easy to use interface",
                       "100% privacy-focused — no data sharing"
                     ].map((item, idx) => (
-                      <motion.li
-                        key={idx}
-                        whileHover={!isMobile ? { 
-                          scale: 1.07, 
-                          color: "#16a34a", 
-                          x: 10, 
-                          textShadow: "0px 0px 8px rgba(34,197,94,0.45)" 
-                        } : {}}
-                        transition={{ type: "spring", stiffness: 320 }}
-                        className={`cursor-pointer ${isMobile ? 'text-sm' : 'text-base'}`}
-                      >
-                        {item}
-                      </motion.li>
+                      <li key={idx} className="text-gray-600 leading-relaxed">{item}</li>
                     ))}
                   </ul>
                 )
@@ -773,42 +827,43 @@ const AboutUs = () => {
                 title: "Cosmetics Scan", 
                 content: "Decode cosmetic product labels and ingredients to understand their safety, skin impact, and allergen risks. PureScan ensures you're informed before you apply." 
               }
-            ].map((section, i) => (
-              <motion.section
-                key={section.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+            ].map((section, idx) => (
+              <motion.div
+                key={idx}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
                 viewport={{ once: true }}
-                transition={{ duration: 0.65, delay: i * 0.25 }}
-                whileHover={!isMobile ? { 
-                  scale: 1.04, 
-                  boxShadow: "0px 10px 36px rgba(16,185,129,0.18)" 
-                } : {}}
-                className={`space-y-${isMobile ? '3' : '4'} cursor-default`}
+                className="group relative cursor-pointer mb-8"
               >
-                <motion.h2
-                  whileHover={!isMobile ? { 
-                    scale: 1.09, 
-                    textShadow: "0px 0px 12px rgba(34,197,94,0.6)" 
-                  } : {}}
-                  className={`
-                    font-semibold text-green-600 hover:underline underline-offset-4
-                    ${isMobile ? 'text-lg sm:text-xl' : 'text-2xl'}
-                  `}
-                >
-                  {section.title}
-                </motion.h2>
-                <motion.div 
-                  whileHover={!isMobile ? { scale: 1.025 } : {}}
-                  className={`leading-relaxed ${isMobile ? 'text-sm sm:text-base' : ''}`}
-                >
-                  {section.content}
-                </motion.div>
-              </motion.section>
+                {/* Card Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500" />
+                
+                {/* Content */}
+                <div className="relative p-6">
+                  <motion.h2 
+                    whileHover={!isMobile ? { scale: 1.05, color: "#059669" } : undefined} 
+                    className="font-bold text-green-800 text-center mb-4 text-xl"
+                  >
+                    {section.title}
+                  </motion.h2>
+                  
+                  <motion.div 
+                    className="text-gray-600 leading-relaxed"
+                    whileHover={!isMobile ? { x: 5 } : undefined}
+                  >
+                    {typeof section.content === "string" ? (
+                      <p className="text-center">{section.content}</p>
+                    ) : (
+                      section.content
+                    )}
+                  </motion.div>
+                </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
-          {/* Stats Section for Mobile */}
+          {/* Stats Section for Mobile - PRIVACY POLICY STYLE */}
           {isMobile && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -851,8 +906,8 @@ const AboutUs = () => {
               </div>
             </motion.div>
           )}
-        </motion.main>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };
