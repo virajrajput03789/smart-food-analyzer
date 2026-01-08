@@ -30,7 +30,7 @@ const Footer = () => {
         <div className="space-y-3">
           <h2 className="text-xl font-bold text-white tracking-wide">PureScan</h2>
           <p className="text-sm leading-relaxed text-gray-400">
-            Making your daily products safer with AI-powered scanning. <br />
+            Making your daily products safer with PureScan scanning. <br />
             Scan. Learn. Stay Healthy.
           </p>
         </div>

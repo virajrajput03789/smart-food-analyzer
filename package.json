@@ -14,8 +14,11 @@
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.1.14",
     "@zxing/browser": "^0.1.5",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "firebase": "^12.4.0",
     "framer-motion": "^12.23.24",
     "fuse.js": "^7.1.0",
@@ -23,6 +26,8 @@
     "lottie-react": "^2.4.1",
     "next": "^16.0.10",
     "openai": "^6.9.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^18.3.1",
     "react-adsense": "^0.1.0",
     "react-confetti": "^6.4.0",
@@ -32,6 +37,7 @@
     "react-icons": "^5.5.0",
     "react-qr-barcode-scanner": "^2.1.16",
     "react-router-dom": "^7.9.4",
+    "react-sparklines": "^1.7.0",
     "react-spring": "^10.0.3",
     "react-tsparticles": "^2.12.2",
     "react-use": "^17.6.0",
@@ -56,5 +62,18 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.1.14"
-  }
+  },
+  "description": "A React Vite app to scan food barcodes, analyze nutrition, and help users make healthier choices.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/virajrajput03789/Pure_Scan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/virajrajput03789/Pure_Scan/issues"
+  },
+  "homepage": "https://github.com/virajrajput03789/Pure_Scan#readme"
 }
