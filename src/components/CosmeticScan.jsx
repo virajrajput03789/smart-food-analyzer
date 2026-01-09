@@ -15,8 +15,7 @@ const CosmeticScan = () => {
     const [productNotFound, setProductNotFound] = useState(false);
     const [incompleteData, setIncompleteData] = useState(false);
 
-    // Environment variables for Vite React app
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const API_BASE_URL = 'https://cosmetic-backend-proxy.vercel.app';
     const IS_PRODUCTION = import.meta.env.PROD;
 
     const cleanBarcode = (rawBarcode) => {
@@ -30,7 +29,11 @@ const CosmeticScan = () => {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         try {
-            const response = await fetch(url, {
+            const finalUrl = url.includes('localhost:3001') 
+                ? url.replace('http://localhost:3001', API_BASE_URL)
+                : url;
+            
+            const response = await fetch(finalUrl, {
                 signal: controller.signal,
                 headers: {
                     'Accept': 'application/json',
@@ -77,38 +80,27 @@ const CosmeticScan = () => {
                 throw new Error(response.error || 'Product not found in our databases');
             }
 
-            // Extract data from API response structure
             const barcodeSource = response.barcodeSource || {};
             const incidecoderData = response.incidecoder || {};
             const metadata = response.metadata || {};
 
-            // Check if we have basic product data
             if (!barcodeSource.product && !incidecoderData.success) {
                 throw new Error('No product data available');
             }
 
             const mergedProduct = {
-                // Basic product data
                 ...(barcodeSource.product || {}),
-                
-                // INCIDecoder data
                 incidecoderProductName: incidecoderData.incidecoderProductName,
                 incidecoderBrand: incidecoderData.incidecoderBrand,
                 incidecoderIngredientList: incidecoderData.incidecoderIngredientList || [],
                 incidecoderProductImage: incidecoderData.incidecoderProductImage,
                 incidecoderUrl: incidecoderData.sourceUrl,
-                
-                // Status flags
                 hasCosmeticData: incidecoderData.success || false,
                 exactMatch: response.exactMatch || false,
-                
-                // Metadata
                 cleanedProductName: metadata.cleanedProductName,
                 searchAttempts: metadata.searchAttempts || [],
                 brand: metadata.brand || barcodeSource.product?.brand,
                 timestamp: metadata.timestamp,
-                
-                // Fallback title
                 title: incidecoderData.incidecoderProductName || 
                        barcodeSource.product?.title || 
                        metadata.cleanedProductName ||
@@ -129,7 +121,7 @@ const CosmeticScan = () => {
     };
 
     const calculateSafetyScore = (ingredientsList, description) => {
-        let score = 75; // Base moderate score
+        let score = 75;
         
         let ingredientsText = '';
         if (ingredientsList && ingredientsList.length > 0) {
@@ -138,7 +130,6 @@ const CosmeticScan = () => {
             ingredientsText = description.toLowerCase();
         }
 
-        // Safe ingredients (add to score)
         const safeIngredients = [
             'glycerin', 'glycerol', 'hyaluronic', 'panthenol', 'niacinamide',
             'vitamin c', 'ascorbic', 'retinol', 'ceramide', 'shea butter',
@@ -148,7 +139,6 @@ const CosmeticScan = () => {
             'allantoin', 'bisabolol', 'xylitol', 'betaine', 'urea'
         ];
         
-        // Potentially harmful ingredients (subtract from score)
         const harmfulIngredients = [
             'paraben', 'methylparaben', 'ethylparaben', 'propylparaben', 'butylparaben',
             'sodium lauryl sulfate', 'sls', 'sodium laureth sulfate', 'sles',
@@ -169,7 +159,6 @@ const CosmeticScan = () => {
             });
         }
         
-        // Clamp score between 0 and 100
         return Math.max(0, Math.min(100, Math.round(score)));
     };
 
@@ -182,11 +171,11 @@ const CosmeticScan = () => {
     };
 
     const getSafetyColor = (score) => {
-        if (score >= 85) return '#10b981'; // Green
-        if (score >= 70) return '#84cc16'; // Lime
-        if (score >= 50) return '#f59e0b'; // Amber
-        if (score >= 30) return '#f97316'; // Orange
-        return '#ef4444'; // Red
+        if (score >= 85) return '#10b981';
+        if (score >= 70) return '#84cc16';
+        if (score >= 50) return '#f59e0b';
+        if (score >= 30) return '#f97316';
+        return '#ef4444';
     };
 
     const isValidImageUrl = (url) => {
@@ -226,7 +215,6 @@ const CosmeticScan = () => {
             return;
         }
         
-        // Stop scanner and start loading
         setShowScanner(false);
         setBarcode(cleaned);
         setResult(null);
@@ -240,9 +228,7 @@ const CosmeticScan = () => {
     const saveToFirestore = async (productData) => {
         try {
             const user = auth.currentUser;
-            if (!user) {
-                return; // User not logged in, skip save
-            }
+            if (!user) return;
 
             const scanId = `${user.uid}_${barcode}_${Date.now()}`;
             const docRef = doc(db, 'cosmeticScans', scanId);
@@ -255,17 +241,13 @@ const CosmeticScan = () => {
                 name: productData.name,
                 brand: productData.brand || '',
                 image: productData.image || '',
-                
                 safetyScore: productData.safety_score || 0,
                 safetyLevel: productData.safety_level || 'Unknown',
                 safety_score: productData.safety_score || 0,
                 safety_level: productData.safety_level || 'Unknown',
-                
                 type: 'cosmetic',
-                
                 timestamp: serverTimestamp(),
                 scannedAt: serverTimestamp(),
-                
                 category: productData.category || '',
                 exactMatch: productData.exactMatch || false,
                 apiSource: productData.apiSource || ''
@@ -274,17 +256,14 @@ const CosmeticScan = () => {
             await setDoc(docRef, dataToSave);
 
         } catch (error) {
-            // Silently fail - don't show error to user
+            // Silently fail
         }
     };
 
     useEffect(() => {
         const executeDataFetch = async () => {
-            if (!barcode || !loading) {
-                return;
-            }
+            if (!barcode || !loading) return;
 
-            // Show loading for 1 second minimum for better UX
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             try {
@@ -298,14 +277,12 @@ const CosmeticScan = () => {
 
                 const product = apiResult.product;
                 
-                // Check if we have basic data
                 if (!product.title && !product.incidecoderProductName) {
                     setIncompleteData(true);
                     setLoading(false);
                     return;
                 }
 
-                // Prepare product data for CosmeticResult
                 const productName = product.incidecoderProductName || 
                                    product.title || 
                                    'Product';
@@ -316,10 +293,8 @@ const CosmeticScan = () => {
                              'Brand';
                 
                 const bestImage = getBestAvailableImage(product);
-                
                 const ingredients = product.incidecoderIngredientList || [];
                 const hasRealIngredients = ingredients.length > 0;
-                
                 const safetyScore = calculateSafetyScore(ingredients, product.description);
                 const safetyLevel = getSafetyLevel(safetyScore);
                 const safetyColor = getSafetyColor(safetyScore);
@@ -329,59 +304,35 @@ const CosmeticScan = () => {
                 if (sources.length === 0 && product.title) sources.push('UPCitemDB');
 
                 const processedData = {
-                    // Basic Info
                     name: productName,
                     brand: brand,
-                    
-                    // Description
-                    description: product.description || 
-                                'No description available for this product.',
-                    
-                    // Image
+                    description: product.description || 'No description available for this product.',
                     image: bestImage,
                     hasImage: !!bestImage,
-                    
-                    // Category
                     category: product.category || '',
-                    
-                    // Ingredients
                     ingredients: ingredients,
                     hasIngredients: ingredients.length > 0,
                     hasRealIngredients: hasRealIngredients,
-                    
-                    // Safety Info
                     safety_score: safetyScore,
                     score: safetyScore,
                     safety_level: safetyLevel,
                     safety_color: safetyColor,
-                    
-                    // Source Info
                     apiSource: sources.join(' + '),
                     source: sources.join(' + '),
                     hasCosmeticData: product.hasCosmeticData || false,
                     exactMatch: product.exactMatch || false,
                     sources: sources,
-                    
-                    // URLs
                     incidecoder_url: product.incidecoderUrl || '',
-                    
-                    // Barcode and identifiers
                     barcode_number: barcode,
                     barcode: barcode,
                     upc: product.upc || barcode,
-                    
-                    // Additional details
                     manufacturer: product.manufacturer || brand,
-                    
                     timestamp: new Date().toISOString(),
                     scanDate: new Date().toLocaleDateString()
                 };
 
                 setResult(processedData);
-                
-                // Save to Firestore in background
                 saveToFirestore(processedData);
-                
                 setLoading(false);
                 setShowResultView(true);
                 
@@ -417,7 +368,6 @@ const CosmeticScan = () => {
                     Scan cosmetic product barcode to analyze ingredients and safety.
                 </p>
 
-                {/* Scanner - Only show when needed */}
                 {showScanner && !loading && !productNotFound && !incompleteData && (
                     <div className="w-full max-w-md">
                         <div className="border rounded-md overflow-hidden shadow-md">
@@ -429,7 +379,6 @@ const CosmeticScan = () => {
                     </div>
                 )}
 
-                {/* Loading State */}
                 {loading && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -437,7 +386,6 @@ const CosmeticScan = () => {
                         className="w-full max-w-md bg-white rounded-lg shadow-lg p-6 border border-gray-200"
                     >
                         <div className="flex flex-col items-center">
-                            {/* Spinner */}
                             <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
                             
                             <h3 className="text-lg font-bold text-gray-800 mb-2">Analyzing Product</h3>
@@ -469,7 +417,6 @@ const CosmeticScan = () => {
                     </motion.div>
                 )}
 
-                {/* Error Message */}
                 {error && !loading && (
                     <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-5 shadow-sm">
                         <div className="flex items-start">
@@ -490,7 +437,6 @@ const CosmeticScan = () => {
                     </div>
                 )}
 
-                {/* Product Not Found */}
                 {productNotFound && !loading && (
                     <div className="w-full max-w-md bg-red-50 border border-red-200 rounded-lg p-5 shadow-sm">
                         <div className="flex flex-col items-center">
@@ -513,7 +459,6 @@ const CosmeticScan = () => {
                     </div>
                 )}
 
-                {/* Incomplete Data */}
                 {incompleteData && !loading && (
                     <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-5 shadow-sm">
                         <div className="flex flex-col items-center">
@@ -536,7 +481,6 @@ const CosmeticScan = () => {
                     </div>
                 )}
 
-                {/* Current Status */}
                 {barcode && (
                     <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200 max-w-md">
                         <div className="flex items-center gap-3 mb-2">
@@ -562,7 +506,6 @@ const CosmeticScan = () => {
                     </div>
                 )}
 
-                {/* Help Text */}
                 {!loading && showScanner && !productNotFound && !incompleteData && (
                     <div className="mt-6 text-sm text-gray-500 max-w-md">
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
