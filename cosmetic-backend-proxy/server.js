@@ -8,7 +8,9 @@ const cheerio = require('cheerio');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
 const winston = require('winston');
-require('dotenv').config();
+
+// ✅ VERCEL FIX 1: Remove dotenv config as Vercel uses environment variables directly
+// require('dotenv').config(); // REMOVE THIS LINE
 
 // Configure logging
 const logger = winston.createLogger({
@@ -18,17 +20,19 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
-    ...(process.env.NODE_ENV !== 'production' 
-      ? [new winston.transports.Console({ format: winston.format.simple() })]
-      : [])
+    // ✅ VERCEL FIX 2: Vercel pe file write nahi hota, sirf console use karo
+    new winston.transports.Console({ 
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
   ],
 });
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const PORT = process.env.PORT || 3001; // ✅ VERCEL FIX 3: Use 3000 instead of 3001
+const NODE_ENV = process.env.NODE_ENV || 'production'; // ✅ VERCEL FIX 4: Default to production
 
 // Configure cache (5 minutes TTL for successful responses)
 const cache = new NodeCache({ 
@@ -49,12 +53,23 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+// ✅ VERCEL FIX 5: CORS settings for Vercel deployment
+// Line 35 ke baad:
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',') 
-    : '*',
+  origin: [
+    'https://pure-scan-five.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+  ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
+
+// Line 40 ke baad ye add karo:
+app.options('*', cors()); // Pre-flight requests handle karega
 
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
@@ -67,7 +82,7 @@ app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev', {
   },
 }));
 
-// Rate limiting configuration
+// ✅ FIXED: Rate limiting configuration (removed keyGenerator)
 const rateLimitConfig = {
   windowMs: NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000, // 15 min in prod, 1 min in dev
   max: NODE_ENV === 'production' ? 100 : 1000, // Limits per windowMs
@@ -78,7 +93,7 @@ const rateLimitConfig = {
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
-  keyGenerator: (req) => req.ip,
+  // ❌ keyGenerator को हटा दिया गया है - automatic IP detection use होगा
 };
 
 const scrapeLimiter = rateLimit(rateLimitConfig);
@@ -124,7 +139,7 @@ const GOOGLE_CUSTOM_SEARCH_CONFIG = {
   apiKey: process.env.GOOGLE_API_KEY || '',
   searchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID || '',
   enabled: !!process.env.GOOGLE_API_KEY && !!process.env.GOOGLE_SEARCH_ENGINE_ID,
-  timeout: parseInt(process.env.GOOGLE_TIMEOUT) || 10000,
+  timeout: parseInt(process.env.GOOGLE_TIMEOUT) || 8000, // ✅ VERCEL FIX 6: Reduce timeout for Vercel (10s limit)
   maxResults: parseInt(process.env.GOOGLE_MAX_RESULTS) || 5,
   retryAttempts: parseInt(process.env.GOOGLE_RETRY_ATTEMPTS) || 2,
 };
@@ -136,7 +151,7 @@ const BARCODE_SOURCES = {
     url: (barcode) => `https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`,
     enabled: process.env.UPCDB_ENABLED !== 'false',
     priority: 1,
-    timeout: parseInt(process.env.UPCDB_TIMEOUT) || 10000,
+    timeout: parseInt(process.env.UPCDB_TIMEOUT) || 8000, // ✅ VERCEL FIX 7: Reduce timeout
     retries: parseInt(process.env.UPCDB_RETRIES) || 2,
     parser: (data) => {
       if (!data.items || data.items.length === 0) return null;
@@ -156,7 +171,7 @@ const BARCODE_SOURCES = {
     url: (barcode) => `https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`,
     enabled: process.env.OPENBEAUTYFACTS_ENABLED !== 'false',
     priority: 2,
-    timeout: parseInt(process.env.OPENBEAUTYFACTS_TIMEOUT) || 10000,
+    timeout: parseInt(process.env.OPENBEAUTYFACTS_TIMEOUT) || 8000, // ✅ VERCEL FIX 8: Reduce timeout
     retries: parseInt(process.env.OPENBEAUTYFACTS_RETRIES) || 2,
     parser: (data) => {
       if (data.status !== 1 || !data.product) return null;
@@ -177,7 +192,7 @@ const BARCODE_SOURCES = {
     url: (barcode) => `https://barcode-list.com/barcode/${barcode}.htm`,
     enabled: process.env.BARCODELIST_ENABLED !== 'false',
     priority: 3,
-    timeout: parseInt(process.env.BARCODELIST_TIMEOUT) || 8000,
+    timeout: parseInt(process.env.BARCODELIST_TIMEOUT) || 6000, // ✅ VERCEL FIX 9: Reduce timeout
     retries: parseInt(process.env.BARCODELIST_RETRIES) || 1,
     isHtmlSource: true,
     parser: (htmlData) => {
@@ -245,7 +260,7 @@ const EWG_CONFIG = {
   searchUrl: (productName) => `https://www.ewg.org/skindeep/search/?search=${encodeURIComponent(productName)}`,
   fallbackEnabled: process.env.EWG_FALLBACK_ENABLED !== 'false',
   manualLookup: process.env.EWG_MANUAL_LOOKUP !== 'false',
-  timeout: parseInt(process.env.EWG_TIMEOUT) || 15000,
+  timeout: parseInt(process.env.EWG_TIMEOUT) || 8000, // ✅ VERCEL FIX 10: Reduce timeout
   userAgent: process.env.EWG_USER_AGENT || 'CosmeticScanner/2.0 (+https://github.com/cosmetic-scanner)',
 };
 
@@ -1024,7 +1039,7 @@ app.get('/api/product/:barcode', scrapeLimiter, async (req, res) => {
             'User-Agent': 'CosmeticScanner/2.0 (+https://github.com/cosmetic-scanner)',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
           }, 
-          timeout: 10000,
+          timeout: 8000, // ✅ VERCEL FIX 11: Reduce timeout
           retryAttempts: 1,
         });
         
@@ -1056,7 +1071,7 @@ app.get('/api/product/:barcode', scrapeLimiter, async (req, res) => {
         
         const { data: productHtml } = await axiosWithRetry.get(productUrl, { 
           headers: { 'User-Agent': 'CosmeticScanner/2.0' }, 
-          timeout: 10000,
+          timeout: 8000, // ✅ VERCEL FIX 12: Reduce timeout
           retryAttempts: 1,
         });
         
@@ -1134,7 +1149,7 @@ app.get('/api/product/:barcode', scrapeLimiter, async (req, res) => {
           logger.debug(`[Combined] Trying Google URL: ${googleSearchResult.url}`);
           const { data: productHtml } = await axiosWithRetry.get(googleSearchResult.url, { 
             headers: { 'User-Agent': 'CosmeticScanner/2.0' }, 
-            timeout: 10000,
+            timeout: 8000, // ✅ VERCEL FIX 13: Reduce timeout
             retryAttempts: 1,
           });
           
@@ -1242,7 +1257,7 @@ app.get('/api/scrape/incidecoder', scrapeLimiter, async (req, res) => {
         'User-Agent': 'CosmeticScanner/2.0 (+https://github.com/cosmetic-scanner)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
       }, 
-      timeout: 10000,
+      timeout: 8000, // ✅ VERCEL FIX 14: Reduce timeout
       retryAttempts: 1,
     });
     
@@ -1276,7 +1291,7 @@ app.get('/api/scrape/incidecoder', scrapeLimiter, async (req, res) => {
     
     const { data: productHtml } = await axiosWithRetry.get(productUrl, { 
       headers: { 'User-Agent': 'CosmeticScanner/2.0' }, 
-      timeout: 10000,
+      timeout: 8000, // ✅ VERCEL FIX 15: Reduce timeout
       retryAttempts: 1,
     });
     
@@ -1442,54 +1457,35 @@ app.use('*', (req, res) => {
   });
 });
 
-// Graceful shutdown handler
-function gracefulShutdown(signal) {
-  return () => {
-    logger.info(`Received ${signal}. Starting graceful shutdown...`);
-    
-    // Stop accepting new requests
-    server.close(() => {
-      logger.info('HTTP server closed.');
+// ✅ VERCEL FIX 16: Add Vercel-compatible server start
+if (require.main === module) {
+  // Local development
+  const server = app.listen(PORT, () => {
+    logger.info(`🎯 Cosmetic Scanner API running at http://localhost:${PORT}`);
+  });
+  
+  // Graceful shutdown handler
+  function gracefulShutdown(signal) {
+    return () => {
+      logger.info(`Received ${signal}. Starting graceful shutdown...`);
       
-      // Close cache
-      cache.close();
-      logger.info('Cache closed.');
+      server.close(() => {
+        logger.info('HTTP server closed.');
+        cache.close();
+        logger.info('Cache closed.');
+        process.exit(0);
+      });
       
-      process.exit(0);
-    });
-    
-    // Force shutdown after 10 seconds
-    setTimeout(() => {
-      logger.error('Could not close connections in time, forcefully shutting down');
-      process.exit(1);
-    }, 10000);
-  };
+      setTimeout(() => {
+        logger.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+      }, 10000);
+    };
+  }
+  
+  process.on('SIGTERM', gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', gracefulShutdown('SIGINT'));
 }
 
-// Start server with graceful shutdown
-const server = app.listen(PORT, () => {
-  logger.info(`🎯 Cosmetic Scanner API v5.0 (Production Ready) running at http://localhost:${PORT}`);
-  logger.info(`🔧 Environment: ${NODE_ENV}`);
-  logger.info(`📊 Features:`);
-  logger.info(`   • Production-grade security with Helmet`);
-  logger.info(`   • Intelligent caching with ${cache.keys().length} initial cache slots`);
-  logger.info(`   • Structured logging with Winston`);
-  logger.info(`   • Rate limiting: ${rateLimitConfig.max} requests per ${rateLimitConfig.windowMs / 60000} minutes`);
-  logger.info(`   • Graceful shutdown enabled`);
-  
-  // Log configuration status
-  logger.info(`📋 Configuration Status:`);
-  logger.info(`   • Google Search: ${GOOGLE_CUSTOM_SEARCH_CONFIG.enabled ? 'Enabled' : 'Disabled (set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID)'}`);
-  logger.info(`   • EWG Integration: ${EWG_CONFIG.enabled ? 'Enabled' : 'Disabled'}`);
-  logger.info(`   • Cache: Enabled (300s TTL)`);
-  
-  if (NODE_ENV === 'production') {
-    logger.info(`🚀 Production mode: Logs are saved to files, CORS restricted to: ${process.env.ALLOWED_ORIGINS || 'all'}`);
-  }
-});
-
-// Handle graceful shutdown
-process.on('SIGTERM', gracefulShutdown('SIGTERM'));
-process.on('SIGINT', gracefulShutdown('SIGINT'));
-
-module.exports = app; // For testing
+// ✅ VERCEL FIX 17: MUST HAVE - Export app for Vercel serverless functions
+module.exports = app;

@@ -15,8 +15,8 @@ const CosmeticScan = () => {
     const [productNotFound, setProductNotFound] = useState(false);
     const [incompleteData, setIncompleteData] = useState(false);
 
-    // ✅ UPDATED: Environment variables for Vite React app
-    const API_BASE_URL = import.meta.env.VITE_BACKEND_APP_API_URL || 'http://localhost:3001';
+    // Environment variables for Vite React app
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     const IS_PRODUCTION = import.meta.env.PROD;
 
     const cleanBarcode = (rawBarcode) => {
