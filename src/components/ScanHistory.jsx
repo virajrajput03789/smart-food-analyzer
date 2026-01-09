@@ -314,7 +314,7 @@ function ScanHistory() {
     detectRetina: true
   };
 
-  // Fetch scan history
+  // ✅ FIXED: Fetch scan history from BOTH collections
   useEffect(() => {
     const fetchHistory = async () => {
       const user = auth.currentUser;
@@ -324,42 +324,65 @@ function ScanHistory() {
       }
 
       try {
-        const q = query(
-          collection(db, "scanHistory"),
-          where("uid", "==", user.uid),
-          orderBy("timestamp", "desc")
-        );
+        // ✅ FETCH FROM BOTH COLLECTIONS
+        const [cosmeticScansSnapshot, foodScansSnapshot] = await Promise.all([
+          getDocs(collection(db, "cosmeticScans")),  // Cosmetic scans
+          getDocs(collection(db, "scanHistory"))     // Food scans
+        ]);
 
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => {
-          const scan = { id: doc.id, ...doc.data() };
+        const allScans = [];
 
-          // Auto-detect type if not set
-          if (!scan.type) {
-            const name = (scan.productName || "").toLowerCase();
-            if (
-              name.includes("cream") ||
-              name.includes("lotion") ||
-              name.includes("shampoo") ||
-              name.includes("face") ||
-              name.includes("nivea") ||
-              name.includes("moisturizer") ||
-              name.includes("serum") ||
-              name.includes("cleanser") ||
-              name.includes("toner")
-            ) {
-              scan.type = "cosmetic";
-            } else {
-              scan.type = "food";
-            }
+        // Process COSMETIC scans
+        cosmeticScansSnapshot.forEach((doc) => {
+          const data = doc.data();
+          // Filter by userId (client-side)
+          if (data.userId === user.uid) {
+            allScans.push({
+              id: doc.id,
+              ...data,
+              type: "cosmetic",
+              // Map fields for UI
+              productName: data.productName || data.name || "Cosmetic Product",
+              image: data.imageUrl || data.image || "",
+              nutritionScore: data.safetyScore ? {
+                value: data.safetyScore,
+                grade: data.safetyLevel || "Unknown"
+              } : (data.safety_score ? {
+                value: data.safety_score,
+                grade: data.safety_level || "Unknown"
+              } : null),
+              timestamp: data.timestamp || data.scannedAt || { seconds: Date.now() / 1000 }
+            });
           }
-
-          return scan;
         });
 
-        setScans(data);
+        // Process FOOD scans
+        foodScansSnapshot.forEach((doc) => {
+          const data = doc.data();
+          // Filter by uid (client-side)
+          if (data.uid === user.uid) {
+            allScans.push({
+              id: doc.id,
+              ...data,
+              type: data.type || "food"
+            });
+          }
+        });
+
+        // Sort all scans by timestamp (newest first)
+        allScans.sort((a, b) => {
+          const getTime = (scan) => {
+            if (scan.timestamp?.seconds) return scan.timestamp.seconds * 1000;
+            if (scan.timestamp?.toDate) return scan.timestamp.toDate().getTime();
+            if (scan.scannedAt?.seconds) return scan.scannedAt.seconds * 1000;
+            return new Date(scan.timestamp || 0).getTime();
+          };
+          return getTime(b) - getTime(a);
+        });
+        
+        setScans(allScans);
       } catch (error) {
-        console.error("Error fetching scan history:", error);
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -368,20 +391,23 @@ function ScanHistory() {
     fetchHistory();
   }, []);
 
-  // Handle single scan deletion
-  const handleDelete = async (scanId) => {
+  // ✅ FIXED: Handle single scan deletion
+  const handleDelete = async (scan) => {
     const confirm = window.confirm("Are you sure you want to delete this scan?");
     if (!confirm) return;
 
     try {
-      await deleteDoc(doc(db, "scanHistory", scanId));
-      setScans((prev) => prev.filter((scan) => scan.id !== scanId));
+      // Determine which collection to delete from
+      const collectionName = scan.type === 'cosmetic' ? 'cosmeticScans' : 'scanHistory';
+      
+      await deleteDoc(doc(db, collectionName, scan.id));
+      setScans((prev) => prev.filter((s) => s.id !== scan.id));
     } catch (err) {
-      console.error("Delete failed:", err);
+      alert("Failed to delete scan. Please try again.");
     }
   };
 
-  // FIXED: Handle delete all scans
+  // ✅ FIXED: Handle delete all scans
   const handleDeleteAll = async () => {
     if (!scans.length) return;
     
@@ -394,29 +420,35 @@ function ScanHistory() {
       const user = auth.currentUser;
       if (!user) return;
 
-      // Get all scan documents for the current user
-      const q = query(
-        collection(db, "scanHistory"),
-        where("uid", "==", user.uid)
-      );
-      const snapshot = await getDocs(q);
-      
-      // Use batch delete for better performance
+      // Delete from BOTH collections
+      const [cosmeticSnapshot, foodSnapshot] = await Promise.all([
+        getDocs(collection(db, "cosmeticScans")),
+        getDocs(collection(db, "scanHistory"))
+      ]);
+
       const batch = writeBatch(db);
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
+      
+      // Delete cosmetic scans
+      cosmeticSnapshot.forEach((doc) => {
+        if (doc.data().userId === user.uid) {
+          batch.delete(doc.ref);
+        }
+      });
+      
+      // Delete food scans
+      foodSnapshot.forEach((doc) => {
+        if (doc.data().uid === user.uid) {
+          batch.delete(doc.ref);
+        }
       });
 
       await batch.commit();
       
-      // Clear local state
       setScans([]);
       
-      // Show success message
-      alert(`Successfully deleted ${snapshot.size} scans!`);
+      alert(`✅ Successfully deleted all scans!`);
       
     } catch (err) {
-      console.error("Delete all failed:", err);
       alert("Failed to delete all scans. Please try again.");
     } finally {
       setIsDeletingAll(false);
@@ -735,7 +767,7 @@ function ScanHistory() {
                       {scan.nutritionScore && (
                         <div className="flex items-center gap-2">
                           <span className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                            Nutrition Score:
+                            {scan.type === "cosmetic" ? "Safety Score:" : "Nutrition Score:"}
                           </span>
                           <motion.span
                             whileHover={!isMobile ? { scale: 1.05 } : {}}
@@ -797,7 +829,7 @@ function ScanHistory() {
                     {/* Delete Button */}
                     <motion.button
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDelete(scan.id)}
+                      onClick={() => handleDelete(scan)}
                       className={`
                         mt-2 px-3 py-1.5 rounded text-white font-medium relative overflow-hidden
                         bg-gradient-to-r from-red-500 to-rose-500 hover:shadow-md

@@ -68,19 +68,12 @@ const CosmeticScan = () => {
 
     const fetchProductData = async (barcode) => {
         try {
-            if (!IS_PRODUCTION) {
-                console.log(`📡 Fetching from: ${API_BASE_URL}/api/product/${barcode}`);
-            }
-            
             const response = await fetchWithTimeout(
                 `${API_BASE_URL}/api/product/${barcode}`,
                 25000
             );
 
             if (!response.success) {
-                if (!IS_PRODUCTION) {
-                    console.error('API error:', response.error);
-                }
                 throw new Error(response.error || 'Product not found in our databases');
             }
 
@@ -128,10 +121,6 @@ const CosmeticScan = () => {
             };
 
         } catch (err) {
-            if (!IS_PRODUCTION) {
-                console.error('Fetch error:', err.message);
-            }
-            
             return { 
                 success: false, 
                 error: err.message || 'Failed to fetch product data'
@@ -237,10 +226,6 @@ const CosmeticScan = () => {
             return;
         }
         
-        if (!IS_PRODUCTION) {
-            console.log(`📱 Scan: ${scannedBarcode} → ${cleaned}`);
-        }
-        
         // Stop scanner and start loading
         setShowScanner(false);
         setBarcode(cleaned);
@@ -253,43 +238,43 @@ const CosmeticScan = () => {
     };
 
     const saveToFirestore = async (productData) => {
-        // Only save in production or if explicitly enabled
-        if (!IS_PRODUCTION && import.meta.env.VITE_ENABLE_FIRESTORE !== 'true') {
-            return;
-        }
-        
         try {
             const user = auth.currentUser;
             if (!user) {
                 return; // User not logged in, skip save
             }
 
-            const docRef = doc(db, 'cosmeticScans', `${user.uid}_${barcode}_${Date.now()}`);
+            const scanId = `${user.uid}_${barcode}_${Date.now()}`;
+            const docRef = doc(db, 'cosmeticScans', scanId);
             
             const dataToSave = {
                 userId: user.uid,
+                id: scanId,
                 barcode: barcode,
                 productName: productData.name,
-                brand: productData.brand,
-                imageUrl: productData.image || '',
-                ingredientsCount: productData.ingredients.length,
-                hasRealIngredients: productData.hasRealIngredients,
-                safetyScore: productData.safety_score,
-                safetyLevel: productData.safety_level,
-                apiSource: productData.apiSource,
-                exactMatch: productData.exactMatch,
+                name: productData.name,
+                brand: productData.brand || '',
+                image: productData.image || '',
+                
+                safetyScore: productData.safety_score || 0,
+                safetyLevel: productData.safety_level || 'Unknown',
+                safety_score: productData.safety_score || 0,
+                safety_level: productData.safety_level || 'Unknown',
+                
+                type: 'cosmetic',
+                
+                timestamp: serverTimestamp(),
                 scannedAt: serverTimestamp(),
-                timestamp: new Date().toISOString()
+                
+                category: productData.category || '',
+                exactMatch: productData.exactMatch || false,
+                apiSource: productData.apiSource || ''
             };
-
-            await setDoc(docRef, dataToSave, { merge: true });
             
-            if (!IS_PRODUCTION) {
-                console.log(`✅ Saved to Firestore: ${productData.name}`);
-            }
+            await setDoc(docRef, dataToSave);
 
-        } catch (firestoreErr) {
-            console.error("Firestore save error:", firestoreErr);
+        } catch (error) {
+            // Silently fail - don't show error to user
         }
     };
 
@@ -301,10 +286,6 @@ const CosmeticScan = () => {
 
             // Show loading for 1 second minimum for better UX
             await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (!IS_PRODUCTION) {
-                console.log(`🔄 Fetching data for barcode: ${barcode}`);
-            }
             
             try {
                 const apiResult = await fetchProductData(barcode);
@@ -399,13 +380,12 @@ const CosmeticScan = () => {
                 setResult(processedData);
                 
                 // Save to Firestore in background
-                saveToFirestore(processedData).catch(console.error);
+                saveToFirestore(processedData);
                 
                 setLoading(false);
                 setShowResultView(true);
                 
             } catch (err) {
-                console.error('Unexpected error:', err);
                 setProductNotFound(true);
                 setLoading(false);
             }

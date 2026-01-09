@@ -442,7 +442,7 @@ function Header() {
                 
                 <motion.img
                   src="/logo1.jpg"
-                  alt="Smart Food Analyzer Logo"
+                  alt="PureScan"
                   className="w-12 h-12 rounded-full object-cover shadow-2xl relative z-10 border-2 border-emerald-600/50"
                   whileTap={{ scale: 0.9 }}
                   drag
