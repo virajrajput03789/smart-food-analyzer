@@ -7,10 +7,6 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "cosmetic-backend-proxy/server.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -19,8 +15,14 @@
       "dest": "/cosmetic-backend-proxy/server.js"
     },
     {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "/index.html"
     }
   ]
 }
