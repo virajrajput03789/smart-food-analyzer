@@ -2,19 +2,21 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
-      "use": "@vercel/node"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
-      "src": "package.json",
-      "use": "@vercel/next-build",
-      "config": { "distDir": "dist" }
+      "src": "cosmetic-backend-proxy/server.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/"
+      "dest": "/cosmetic-backend-proxy/server.js"
     },
     {
       "src": "/(.*)",
