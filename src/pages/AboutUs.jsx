@@ -1,38 +1,180 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo, Suspense } from 'react';
 import { 
   motion, 
   useScroll, 
   useTransform, 
   useMotionValue, 
-  animate, 
   useSpring,
-  AnimatePresence 
+  AnimatePresence,
+  useAnimationFrame,
+  useReducedMotion
 } from 'framer-motion';
-import Particles from 'react-tsparticles';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 }
+// ULTRA OPTIMIZED PREMIUM DEVICE DETECTION HOOK
+const usePremiumDeviceDetection = () => {
+  const [device, setDevice] = useState({
+    isMobile: false,
+    isTablet: false,
+    isDesktop: true,
+    touchCapable: false,
+    reducedMotion: false,
+    highRefreshRate: false,
+    lowPowerMode: false,
+    dataSaver: false,
+    isIOS: false,
+    isAndroid: false,
+    canHover: true
+  });
+  
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      const isMobile = width < 768;
+      const isTablet = width >= 768 && width < 1024;
+      const isDesktop = width >= 1024;
+      const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const highRefreshRate = window.matchMedia('(min-resolution: 192dpi)').matches;
+      const lowPowerMode = navigator.connection?.saveData || false;
+      const dataSaver = navigator.connection?.saveData || false;
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const canHover = window.matchMedia('(hover: hover)').matches;
+      
+      requestAnimationFrame(() => {
+        setDevice({
+          isMobile,
+          isTablet,
+          isDesktop,
+          touchCapable,
+          reducedMotion,
+          highRefreshRate,
+          lowPowerMode,
+          dataSaver,
+          isIOS,
+          isAndroid,
+          canHover
+        });
+      });
+    };
+    
+    checkDevice();
+    
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        requestAnimationFrame(checkDevice);
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const dataQuery = window.matchMedia('(prefers-reduced-data: reduce)');
+    const refreshQuery = window.matchMedia('(min-resolution: 192dpi)');
+    const hoverQuery = window.matchMedia('(hover: hover)');
+    
+    const handleMediaChange = () => requestAnimationFrame(checkDevice);
+    
+    if (motionQuery.addEventListener) motionQuery.addEventListener('change', handleMediaChange, { passive: true });
+    if (dataQuery.addEventListener) dataQuery.addEventListener('change', handleMediaChange, { passive: true });
+    if (refreshQuery.addEventListener) refreshQuery.addEventListener('change', handleMediaChange, { passive: true });
+    if (hoverQuery.addEventListener) hoverQuery.addEventListener('change', handleMediaChange, { passive: true });
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+      
+      if (motionQuery.removeEventListener) motionQuery.removeEventListener('change', handleMediaChange);
+      if (dataQuery.removeEventListener) dataQuery.removeEventListener('change', handleMediaChange);
+      if (refreshQuery.removeEventListener) refreshQuery.removeEventListener('change', handleMediaChange);
+      if (hoverQuery.removeEventListener) hoverQuery.removeEventListener('change', handleMediaChange);
+    };
+  }, []);
+  
+  return device;
 };
 
-// Micro Interaction Component (similar to Home page)
-const MicroInteraction = ({ type, x, y, color, isMobile }) => {
+// ENHANCED SPRING CONFIGURATIONS FOR BUTTERY ANIMATIONS
+const PREMIUM_SPRINGS = {
+  ultraSmooth: { stiffness: 210, damping: 32, mass: 0.4, restDelta: 0.0001, restSpeed: 0.0001 },
+  smooth: { stiffness: 185, damping: 28, mass: 0.5, restDelta: 0.0001, restSpeed: 0.0001 },
+  responsive: { stiffness: 165, damping: 25, mass: 0.6, restDelta: 0.001, restSpeed: 0.001 },
+  bouncy: { stiffness: 230, damping: 22, mass: 0.4, restDelta: 0.001, restSpeed: 0.001 },
+  mobile: { stiffness: 150, damping: 30, mass: 0.7, restDelta: 0.005, restSpeed: 0.005 },
+  hover: { stiffness: 400, damping: 25, mass: 0.3, restDelta: 0.0001, restSpeed: 0.0001 }
+};
+
+// ENHANCED EASING CURVES FOR SMOOTH ANIMATIONS
+const PREMIUM_EASING = {
+  easeOutExpo: [0.16, 1, 0.3, 1],
+  easeOutCirc: [0, 0.55, 0.45, 1],
+  easeOutBack: [0.34, 1.56, 0.64, 1],
+  easeOutQuint: [0.22, 1, 0.36, 1],
+  premiumEnter: [0.32, 0.94, 0.6, 1],
+  premiumExit: [0.76, 0, 0.24, 1],
+  mobileEase: [0.25, 0.46, 0.45, 0.94],
+  hoverEase: [0.4, 0, 0.2, 1],
+  smoothBounce: [0.68, -0.55, 0.265, 1.55]
+};
+
+// ENHANCED MICROINTERACTION WITH MORE ANIMATIONS
+const PremiumMicroInteraction = React.memo(({ type, x, y, color, isMobile, isTablet, reducedMotion }) => {
+  if (reducedMotion) return null;
+  
+  const size = isMobile ? 8 : isTablet ? 10 : 12;
+  
   if (type === 'sparkle') {
     return (
       <motion.div
         className="absolute pointer-events-none"
-        initial={{ x, y, scale: 0, opacity: 0 }}
+        initial={{ x, y, scale: 0, opacity: 0, rotate: 0 }}
         animate={{
-          scale: [0, 1.2, 0],
-          opacity: [0, 1, 0],
-          rotate: [0, 180]
+          scale: [0, 1.4, 0],
+          opacity: [0, 0.9, 0],
+          rotate: [0, 180],
+          y: [y, y - (isMobile ? 15 : isTablet ? 25 : 40)]
         }}
-        transition={{ duration: isMobile ? 0.4 : 0.6 }}
+        transition={{
+          duration: isMobile ? 0.4 : isTablet ? 0.5 : 0.6,
+          ease: PREMIUM_EASING.easeOutExpo,
+          times: [0, 0.5, 1]
+        }}
         style={{
-          width: isMobile ? '16px' : '20px',
-          height: isMobile ? '16px' : '20px',
-          background: `radial-gradient(circle, ${color}60, transparent 70%)`,
-          borderRadius: '50%'
+          width: `${size}px`,
+          height: `${size}px`,
+          background: `radial-gradient(circle, ${color}99, ${color}33 70%)`,
+          borderRadius: '50%',
+          filter: `blur(${isMobile ? '1px' : '1.5px'})`,
+          boxShadow: `0 0 ${isMobile ? '8px' : '12px'} ${color}80`,
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
+        }}
+      />
+    );
+  }
+  
+  if (type === 'glow') {
+    return (
+      <motion.div
+        className="absolute pointer-events-none rounded-full"
+        initial={{ x: x - size/2, y: y - size/2, scale: 0, opacity: 0.7 }}
+        animate={{
+          scale: [0, 2.5],
+          opacity: [0.7, 0]
+        }}
+        transition={{
+          duration: isMobile ? 0.6 : 0.8,
+          ease: PREMIUM_EASING.easeOutCirc
+        }}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          background: color,
+          filter: `blur(${isMobile ? '3px' : '4px'})`,
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
         }}
       />
     );
@@ -42,332 +184,1101 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
     return (
       <motion.div
         className="absolute pointer-events-none rounded-full"
-        initial={{ x: x - (isMobile ? 10 : 15), y: y - (isMobile ? 10 : 15), scale: 0, opacity: 0.7 }}
+        initial={{ x: x - size/2, y: y - size/2, scale: 0, opacity: 0.6 }}
         animate={{
-          scale: [0, 1.5],
-          opacity: [0.7, 0]
+          scale: [0, 3],
+          opacity: [0.6, 0]
         }}
-        transition={{ duration: isMobile ? 0.6 : 0.8 }}
+        transition={{
+          duration: isMobile ? 0.8 : 1,
+          ease: PREMIUM_EASING.easeOutBack,
+          repeat: 1,
+          repeatType: "reverse"
+        }}
         style={{
-          width: isMobile ? '24px' : '30px',
-          height: isMobile ? '24px' : '30px',
-          background: color,
-          filter: 'blur(4px)'
+          width: `${size}px`,
+          height: `${size}px`,
+          background: `conic-gradient(from 0deg, ${color}, ${color}40)`,
+          filter: `blur(${isMobile ? '2px' : '3px'})`,
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
         }}
       />
     );
   }
   
   return null;
-};
+});
 
-// Interactive Background (similar to Home page)
-const InteractiveBackground = ({ isMobile }) => {
+// ENHANCED INTERACTIVE BACKGROUND WITH MORE ANIMATION TYPES
+const PremiumInteractiveBackground = React.memo(({ isMobile, isTablet, reducedMotion, dataSaver }) => {
   const [interactions, setInteractions] = useState([]);
+  const interactionCount = useMemo(() => 
+    dataSaver ? 4 : (isMobile ? 6 : isTablet ? 10 : 15),
+    [isMobile, isTablet, dataSaver]
+  );
   
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7 && interactions.length < (isMobile ? 4 : 8)) {
-        const type = Math.random() > 0.5 ? 'sparkle' : 'pulse';
-        const colors = ['#10B981', '#34D399', '#22C55E', '#059669'];
-        setInteractions(prev => [...prev, {
-          id: Date.now(),
-          type,
-          x: Math.random() * 100 + '%',
-          y: Math.random() * 100 + '%',
-          color: colors[Math.floor(Math.random() * colors.length)]
-        }]);
-      }
-    }, isMobile ? 1200 : 800);
+    if (reducedMotion || dataSaver) return;
     
-    return () => clearInterval(interval);
-  }, [interactions.length, isMobile]);
+    let frameId;
+    let lastTime = 0;
+    const updateInterval = isMobile ? 150 : isTablet ? 120 : 100;
+    
+    const updateInteractions = (currentTime) => {
+      if (currentTime - lastTime > updateInterval) {
+        if (Math.random() > 0.85 && interactions.length < interactionCount) {
+          const types = ['sparkle', 'glow', 'pulse'];
+          const colors = [
+            '#10B981CC',
+            '#34D399CC', 
+            '#22C55ECC',
+            '#059669CC',
+            '#047857CC',
+            '#7C3AEDCC'
+          ];
+          
+          const newInteraction = {
+            id: Date.now() + Math.random(),
+            type: types[Math.floor(Math.random() * types.length)],
+            x: Math.random() * 100 + '%',
+            y: Math.random() * 100 + '%',
+            color: colors[Math.floor(Math.random() * colors.length)]
+          };
+          
+          setInteractions(prev => {
+            const newArray = [...prev.slice(-(interactionCount - 1)), newInteraction];
+            return newArray;
+          });
+          
+          setTimeout(() => {
+            setInteractions(prev => prev.filter(i => i.id !== newInteraction.id));
+          }, 2000);
+        }
+        lastTime = currentTime;
+      }
+      frameId = requestAnimationFrame(updateInteractions);
+    };
+    
+    frameId = requestAnimationFrame(updateInteractions);
+    
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [interactions.length, isMobile, isTablet, reducedMotion, interactionCount, dataSaver]);
+  
+  if (dataSaver || reducedMotion) return null;
   
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10">
       {interactions.map(interaction => (
-        <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
+        <PremiumMicroInteraction 
+          key={interaction.id} 
+          {...interaction} 
+          isMobile={isMobile}
+          isTablet={isTablet}
+          reducedMotion={reducedMotion}
+        />
       ))}
     </div>
   );
-};
+});
 
+// ENHANCED PARTICLE BACKGROUND WITH MORE ANIMATIONS
+const PremiumParticleBackground = React.memo(({ isMobile, isTablet, reducedMotion, dataSaver }) => {
+  const particleCount = useMemo(() => 
+    dataSaver ? 0 : (reducedMotion ? 0 : (isMobile ? 25 : isTablet ? 40 : 60)),
+    [isMobile, isTablet, reducedMotion, dataSaver]
+  );
+  
+  if (reducedMotion || dataSaver || particleCount === 0) {
+    return (
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute -top-48 -left-48 w-96 h-96 rounded-full"
+          animate={reducedMotion ? {} : {
+            opacity: [0.05, 0.1, 0.05],
+            scale: [1, 1.05, 1]
+          }}
+          transition={reducedMotion ? {} : {
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            background: 'radial-gradient(circle, rgba(16,185,129,0.1), rgba(34,197,94,0.08), transparent 70%)',
+            filter: 'blur(80px)',
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)'
+          }}
+        />
+        <motion.div
+          className="absolute -right-24 -bottom-24 w-80 h-80 rounded-full"
+          animate={reducedMotion ? {} : {
+            opacity: [0.04, 0.08, 0.04],
+            scale: [1, 1.04, 1]
+          }}
+          transition={reducedMotion ? {} : {
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          style={{
+            background: 'radial-gradient(circle, rgba(253,224,71,0.08), rgba(34,197,94,0.06), transparent 70%)',
+            filter: 'blur(70px)',
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)'
+          }}
+        />
+      </div>
+    );
+  }
+  
+  const particles = useMemo(() => 
+    Array.from({ length: particleCount }).map((_, i) => {
+      const size = isMobile ? Math.random() * 1.5 + 0.5 : isTablet ? Math.random() * 2 + 1 : Math.random() * 3 + 1.5;
+      const colors = [
+        'rgba(16, 185, 129, 0.25)',
+        'rgba(52, 211, 153, 0.25)',
+        'rgba(34, 197, 94, 0.25)',
+        'rgba(5, 150, 105, 0.25)'
+      ];
+      
+      return {
+        id: i,
+        size,
+        color: colors[i % 4],
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        duration: Math.random() * 6 + 4,
+        delay: i * 0.04,
+        rotation: Math.random() * 360
+      };
+    }),
+    [particleCount, isMobile, isTablet]
+  );
+  
+  return (
+    <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+      {particles.map(particle => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full"
+          style={{
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            background: particle.color,
+            left: particle.left,
+            top: particle.top,
+            filter: 'blur(0.5px)',
+            boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)'
+          }}
+          animate={{
+            x: [0, (Math.random() - 0.5) * (isMobile ? 25 : isTablet ? 35 : 50)],
+            y: [0, (Math.random() - 0.5) * (isMobile ? 25 : isTablet ? 35 : 50)],
+            opacity: [0.15, 0.3, 0.15],
+            scale: [1, 1.15, 1],
+            rotate: [0, particle.rotation]
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            ease: PREMIUM_EASING.easeOutCirc,
+            delay: particle.delay,
+            times: [0, 0.5, 1]
+          }}
+        />
+      ))}
+    </div>
+  );
+});
+
+// ENHANCED SCROLL PROGRESS WITH ANIMATION
+const PremiumScrollProgress = React.memo(({ scrollYProgress }) => {
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left pointer-events-none"
+      style={{ 
+        scaleX: scrollYProgress,
+        transform: 'translate3d(0,0,0)',
+        willChange: 'transform'
+      }}
+    >
+      <motion.div
+        className="h-full w-full"
+        animate={{
+          backgroundPosition: ['0% 0%', '100% 0%']
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{
+          background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+          backgroundSize: '400% 100%',
+          willChange: 'background-position'
+        }}
+      />
+    </motion.div>
+  );
+});
+
+// ENHANCED RIPPLE EFFECT WITH MORE ANIMATIONS
+const PremiumRippleEffect = React.memo(({ ripples, isMobile, isTablet, reducedMotion }) => {
+  if (reducedMotion || ripples.length === 0) return null;
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+      <AnimatePresence>
+        {ripples.slice(-3).map(ripple => (
+          <motion.div
+            key={ripple.id}
+            className="absolute pointer-events-none rounded-full"
+            initial={{
+              scale: 0,
+              opacity: 0.9,
+              x: ripple.x - 10,
+              y: ripple.y - 10,
+              width: 20,
+              height: 20
+            }}
+            animate={{
+              scale: [0, ripple.size * 2.5, ripple.size * 3],
+              opacity: [0.9, 0.4, 0],
+              width: [20, 100, 130],
+              height: [20, 100, 130],
+              x: [ripple.x - 10, ripple.x - 50, ripple.x - 65],
+              y: [ripple.y - 10, ripple.y - 50, ripple.y - 65],
+              rotate: [0, 45, 90]
+            }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.9,
+              ease: PREMIUM_EASING.easeOutExpo
+            }}
+            style={{
+              background: `radial-gradient(circle, ${ripple.color}, transparent 70%)`,
+              filter: 'blur(8px)',
+              mixBlendMode: 'screen',
+              transform: 'translate3d(0,0,0)',
+              willChange: 'transform, opacity'
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+// ENHANCED TOUCH TRAIL WITH ANIMATIONS
+const PremiumTouchTrail = React.memo(({ position, isScrolling, reducedMotion }) => {
+  const trailRef = useRef(null);
+  
+  useEffect(() => {
+    if (trailRef.current && !reducedMotion) {
+      trailRef.current.style.left = `${position.x - 4}px`;
+      trailRef.current.style.top = `${position.y - 4}px`;
+    }
+  }, [position, reducedMotion]);
+  
+  if (reducedMotion) return null;
+  
+  return (
+    <motion.div
+      ref={trailRef}
+      className="absolute pointer-events-none rounded-full z-30"
+      animate={{
+        scale: [1, 1.2, 1],
+        opacity: [0.8, 1, 0.8]
+      }}
+      transition={{
+        duration: 0.8,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+      style={{
+        width: '8px',
+        height: '8px',
+        background: 'radial-gradient(circle, rgba(34,197,94,0.5), rgba(16,185,129,0.3))',
+        border: '1px solid rgba(34,197,94,0.6)',
+        filter: 'blur(0.5px)',
+        opacity: isScrolling ? 0.5 : 1,
+        boxShadow: '0 0 10px rgba(34,197,94,0.3)',
+        transform: 'translate3d(0,0,0)',
+        willChange: 'transform, opacity'
+      }}
+    />
+  );
+});
+
+// ENHANCED FLOATING ELEMENTS WITH MORE ANIMATIONS
+const PremiumFloatingElements = React.memo(({ isMobile, isTablet, reducedMotion, dataSaver }) => {
+  const elements = useMemo(() => {
+    if (dataSaver || reducedMotion) return [];
+    
+    const baseElements = [
+      { icon: '💚', x: '10%', y: '20%', delay: 0, size: isMobile ? 'text-lg' : 'text-xl' },
+      { icon: '🍃', x: '85%', y: '30%', delay: 2, size: isMobile ? 'text-base' : 'text-lg' },
+      { icon: '✨', x: '20%', y: '70%', delay: 4, size: isMobile ? 'text-base' : 'text-lg' },
+      { icon: '🌱', x: '75%', y: '65%', delay: 6, size: isMobile ? 'text-lg' : 'text-xl' }
+    ];
+    
+    if (!isMobile && !isTablet) {
+      baseElements.push(
+        { icon: '🍎', x: '40%', y: '15%', delay: 1, size: 'text-base' },
+        { icon: '🥑', x: '60%', y: '80%', delay: 3, size: 'text-lg' },
+        { icon: '🥦', x: '15%', y: '45%', delay: 5, size: 'text-base' },
+        { icon: '🍓', x: '90%', y: '50%', delay: 7, size: 'text-base' }
+      );
+    }
+    
+    return baseElements;
+  }, [isMobile, isTablet, reducedMotion, dataSaver]);
+  
+  if (elements.length === 0) return null;
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+      {elements.slice(0, isMobile ? 4 : isTablet ? 6 : 8).map((el, idx) => (
+        <motion.div
+          key={idx}
+          className={`absolute ${el.size} opacity-30`}
+          style={{ 
+            left: el.x, 
+            top: el.y,
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)'
+          }}
+          animate={{
+            y: [0, -15, 0],
+            rotate: [0, 10, -10, 0],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{
+            duration: 6 + idx,
+            repeat: Infinity,
+            ease: PREMIUM_EASING.smoothBounce,
+            delay: el.delay,
+            times: [0, 0.5, 1]
+          }}
+        >
+          {el.icon}
+        </motion.div>
+      ))}
+    </div>
+  );
+});
+
+// ENHANCED BACKGROUND ORBS WITH ANIMATIONS
+const PremiumBackgroundOrbs = React.memo(({ isMobile, isTablet, reducedMotion, dataSaver }) => {
+  if (dataSaver) {
+    return (
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute -top-32 -left-32 w-64 h-64 rounded-full bg-gradient-to-br from-green-400/5 via-emerald-400/3 to-teal-300/5 blur-[60px]" />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+      <motion.div
+        className="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 lg:w-[30rem] lg:h-[30rem] rounded-full"
+        animate={reducedMotion ? {} : {
+          opacity: [0.1, 0.18, 0.1],
+          scale: [1, 1.1, 1],
+          rotate: [0, 180, 360]
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{
+          background: 'radial-gradient(circle, rgba(16,185,129,0.2), rgba(34,197,94,0.15), transparent 70%)',
+          filter: 'blur(80px)',
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
+        }}
+      />
+      
+      <motion.div
+        className="absolute -right-16 -bottom-16 w-64 h-64 sm:w-80 sm:h-80 lg:w-[25rem] lg:h-[25rem] rounded-full"
+        animate={reducedMotion ? {} : {
+          opacity: [0.08, 0.16, 0.08],
+          scale: [1, 1.08, 1],
+          rotate: [0, -180, -360]
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 18,
+          repeat: Infinity,
+          ease: "linear",
+          delay: 0.5
+        }}
+        style={{
+          background: 'radial-gradient(circle, rgba(253,224,71,0.15), rgba(34,197,94,0.1), transparent 70%)',
+          filter: 'blur(70px)',
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
+        }}
+      />
+      
+      <motion.div
+        className="absolute top-1/4 right-1/4 w-32 h-32 sm:w-40 sm:h-40 rounded-full"
+        animate={reducedMotion ? {} : {
+          opacity: [0.05, 0.1, 0.05],
+          scale: [1, 1.2, 1],
+          x: [0, 20, 0],
+          y: [0, -20, 0]
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 12,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1
+        }}
+        style={{
+          background: 'radial-gradient(circle, rgba(124,58,237,0.1), rgba(34,197,94,0.05), transparent 70%)',
+          filter: 'blur(40px)',
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
+        }}
+      />
+    </div>
+  );
+});
+
+// ENHANCED CARD COMPONENT WITH ANIMATED HOVER EFFECTS
+const PremiumCard = React.memo(({ children, className = '', isMobile, isTablet, reducedMotion, touchCapable, canHover }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef(null);
+  
+  const handleHoverStart = useCallback(() => {
+    if (!reducedMotion && canHover) setIsHovered(true);
+  }, [reducedMotion, canHover]);
+  
+  const handleHoverEnd = useCallback(() => {
+    if (!reducedMotion && canHover) setIsHovered(false);
+  }, [reducedMotion, canHover]);
+  
+  // Mouse position tracking for parallax effect
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  const handleMouseMove = useCallback((e) => {
+    if (!cardRef.current || reducedMotion || !canHover) return;
+    
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 10;
+    
+    setMousePosition({ x, y });
+  }, [reducedMotion, canHover]);
+  
+  const handleMouseLeave = useCallback(() => {
+    setMousePosition({ x: 0, y: 0 });
+  }, []);
+  
+  return (
+    <motion.div
+      ref={cardRef}
+      className={`relative overflow-hidden rounded-2xl backdrop-blur-xl border border-white/20 bg-gradient-to-br from-white/90 to-white/60 shadow-2xl shadow-green-100/50 ${className}`}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: isMobile ? "50px" : "100px" }}
+      transition={{
+        duration: reducedMotion ? 0 : 0.6,
+        ease: PREMIUM_EASING.premiumEnter
+      }}
+      whileHover={(!reducedMotion && canHover) ? {
+        y: -8,
+        scale: 1.02,
+        boxShadow: "0 25px 60px rgba(16,185,129,0.2)",
+        transition: PREMIUM_SPRINGS.hover
+      } : undefined}
+      whileTap={touchCapable ? { 
+        scale: 0.98,
+        transition: PREMIUM_SPRINGS.responsive 
+      } : undefined}
+      onHoverStart={handleHoverStart}
+      onHoverEnd={handleHoverEnd}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={() => touchCapable && !reducedMotion && setIsHovered(true)}
+      onTouchEnd={() => touchCapable && !reducedMotion && setIsHovered(false)}
+      style={{
+        transform: `translate3d(0,0,0) rotateX(${mousePosition.y}deg) rotateY(${mousePosition.x}deg)`,
+        willChange: 'transform, box-shadow',
+        transition: !reducedMotion && canHover ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+      }}
+    >
+      {/* Animated gradient overlay on hover */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-br from-green-50/0 to-emerald-50/0"
+        animate={isHovered ? {
+          background: [
+            'linear-gradient(135deg, rgba(16,185,129,0.03) 0%, rgba(52,211,153,0.02) 100%)',
+            'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(52,211,153,0.04) 100%)',
+            'linear-gradient(135deg, rgba(16,185,129,0.03) 0%, rgba(52,211,153,0.02) 100%)'
+          ]
+        } : {}}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        style={{
+          willChange: 'background',
+          transform: 'translateZ(0)'
+        }}
+      />
+      
+      {/* Animated border effect */}
+      <motion.div
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{
+          background: 'linear-gradient(90deg, transparent 50%, rgba(16,185,129,0.1) 50%, rgba(52,211,153,0.1) 100%)',
+          backgroundSize: '200% 100%',
+          opacity: 0,
+          willChange: 'background-position, opacity',
+          transform: 'translateZ(0)'
+        }}
+        animate={isHovered ? {
+          backgroundPosition: ['100% 0', '0% 0'],
+          opacity: [0, 0.3, 0]
+        } : {}}
+        transition={{
+          duration: 1.5,
+          ease: "linear"
+        }}
+      />
+      
+      {/* Floating particles inside card */}
+      {isHovered && !reducedMotion && (
+        <div className="absolute inset-0 pointer-events-none">
+          {Array.from({ length: isMobile ? 3 : isTablet ? 5 : 8 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              initial={{
+                scale: 0,
+                opacity: 0,
+                x: Math.random() * 100 + '%',
+                y: Math.random() * 100 + '%'
+              }}
+              animate={{
+                scale: [0, 1, 0],
+                opacity: [0, 0.4, 0],
+                y: [0, -20, -40]
+              }}
+              transition={{
+                duration: 1.5,
+                delay: i * 0.1,
+                ease: "easeOut"
+              }}
+              style={{
+                width: '2px',
+                height: '2px',
+                background: 'rgba(16, 185, 129, 0.6)',
+                filter: 'blur(0.5px)',
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)'
+              }}
+            />
+          ))}
+        </div>
+      )}
+      
+      <div className="relative z-10 p-6 sm:p-8">
+        {children}
+      </div>
+    </motion.div>
+  );
+});
+
+// ENHANCED STAT COMPONENT WITH ANIMATIONS
+const PremiumStat = React.memo(({ value, label, color, index, isMobile, reducedMotion }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const statRef = useRef(null);
+  
+  return (
+    <motion.div
+      ref={statRef}
+      className="relative overflow-hidden rounded-xl backdrop-blur-lg bg-white/80 p-4 sm:p-6 shadow-lg shadow-green-100/30"
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{
+        duration: reducedMotion ? 0 : 0.5,
+        delay: index * 0.1,
+        ease: PREMIUM_EASING.premiumEnter
+      }}
+      whileHover={!reducedMotion ? {
+        y: -4,
+        scale: 1.05,
+        boxShadow: "0 15px 40px rgba(16,185,129,0.25)",
+        transition: PREMIUM_SPRINGS.hover
+      } : undefined}
+      onHoverStart={() => !reducedMotion && setIsHovered(true)}
+      onHoverEnd={() => !reducedMotion && setIsHovered(false)}
+      style={{
+        transform: 'translate3d(0,0,0)',
+        willChange: 'transform'
+      }}
+    >
+      {/* Pulsing background effect */}
+      <motion.div
+        className="absolute inset-0 rounded-xl"
+        style={{
+          background: `radial-gradient(circle at 50% 50%, ${color}15, transparent 70%)`,
+          opacity: 0,
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)'
+        }}
+        animate={isHovered ? {
+          scale: [1, 1.2, 1],
+          opacity: [0, 0.3, 0]
+        } : {}}
+        transition={{
+          duration: 1.5,
+          ease: "easeOut"
+        }}
+      />
+      
+      {/* Animated border */}
+      <motion.div
+        className="absolute inset-0 rounded-xl border-2 pointer-events-none"
+        style={{
+          borderColor: color,
+          opacity: 0,
+          willChange: 'opacity, border-color',
+          transform: 'translateZ(0)'
+        }}
+        animate={isHovered ? {
+          opacity: [0, 0.3, 0],
+          borderColor: [color + '00', color + '80', color + '00']
+        } : {}}
+        transition={{
+          duration: 1.2,
+          ease: "easeInOut"
+        }}
+      />
+      
+      <motion.div
+        className={`font-bold ${isMobile ? 'text-2xl sm:text-3xl' : 'text-4xl'} mb-2`}
+        style={{ color }}
+        animate={reducedMotion ? {} : {
+          scale: [1, 1.08, 1],
+          textShadow: isHovered ? [
+            `0 0 0px ${color}`,
+            `0 0 10px ${color}40`,
+            `0 0 0px ${color}`
+          ] : []
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 2.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: index * 0.3
+        }}
+      >
+        {value}
+      </motion.div>
+      <motion.div 
+        className={`text-gray-600 ${isMobile ? 'text-xs sm:text-sm' : 'text-sm'}`}
+        animate={isHovered ? {
+          color: [color, '#374151', color],
+          scale: [1, 1.05, 1]
+        } : {}}
+        transition={{
+          duration: 1,
+          ease: "easeInOut"
+        }}
+      >
+        {label}
+      </motion.div>
+      
+      {/* Particle burst on hover */}
+      {isHovered && !reducedMotion && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i / 8) * Math.PI * 2;
+            const distance = 40;
+            return (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                initial={{
+                  x: '50%',
+                  y: '50%',
+                  scale: 0,
+                  opacity: 0
+                }}
+                animate={{
+                  x: `calc(50% + ${Math.cos(angle) * distance}px)`,
+                  y: `calc(50% + ${Math.sin(angle) * distance}px)`,
+                  scale: [0, 1, 0],
+                  opacity: [0, 0.6, 0]
+                }}
+                transition={{
+                  duration: 0.8,
+                  delay: i * 0.05,
+                  ease: "easeOut"
+                }}
+                style={{
+                  width: '4px',
+                  height: '4px',
+                  background: color,
+                  filter: 'blur(1px)',
+                  willChange: 'transform, opacity',
+                  transform: 'translateZ(0)'
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </motion.div>
+  );
+});
+
+// MAIN ABOUT US COMPONENT WITH ENHANCED ANIMATIONS
 const AboutUs = () => {
   const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const lastUpdate = useRef(0);
+  
   const [ripples, setRipples] = useState([]);
-  const [hoverGlow, setHoverGlow] = useState({ x: 0, y: 0, active: false });
-  const [floatingIcons, setFloatingIcons] = useState([]);
-  const [isMobile, setIsMobile] = useState(false);
   const [touchPosition, setTouchPosition] = useState({ x: 0, y: 0 });
-
-  // Mobile detection with throttling
-  useEffect(() => {
-    let timeoutId;
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    const handleResize = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(checkMobile, 100);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  // Enhanced mouse/touch tracking
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const orb1X = useMotionValue(0);
-  const orb1Y = useMotionValue(0);
-  const orb2X = useMotionValue(0);
-  const orb2Y = useMotionValue(0);
-
-  // Scroll animations with mobile optimization
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollVelocity, setScrollVelocity] = useState(0);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  const device = usePremiumDeviceDetection();
+  const { isMobile, isTablet, isDesktop, touchCapable, reducedMotion, highRefreshRate, dataSaver, canHover } = device;
+  
   const { scrollYProgress } = useScroll({ 
-    target: containerRef, 
+    target: contentRef, 
     offset: ["start start", "end end"] 
   });
-
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, isMobile ? -60 : -140]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, isMobile ? 0.9 : 0.85]);
-  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, isMobile ? 0.98 : 0.96]);
-
-  const heroYSpring = useSpring(heroY, { 
-    stiffness: isMobile ? 140 : 160, 
-    damping: isMobile ? 35 : 30 
+  
+  const scrollY = useMotionValue(0);
+  const scrollVelocityY = useMotionValue(0);
+  
+  useAnimationFrame(() => {
+    const currentTime = performance.now();
+    
+    if (currentTime - lastUpdate.current < 16) return;
+    
+    const currentY = window.scrollY;
+    const prevY = scrollY.get();
+    const velocity = currentY - prevY;
+    
+    if (Math.abs(velocity) > 0.1 || Math.abs(currentY - prevY) > 1) {
+      scrollY.set(currentY);
+      scrollVelocityY.set(velocity);
+      
+      setScrollVelocity(Math.abs(velocity));
+      setIsScrolling(Math.abs(velocity) > 0.5);
+    }
+    
+    lastUpdate.current = currentTime;
   });
-  const heroScaleSpring = useSpring(heroScale, { 
-    stiffness: isMobile ? 180 : 200, 
-    damping: isMobile ? 40 : 35 
-  });
-  const orbY = useTransform(scrollYProgress, [0, 1], [0, isMobile ? 80 : 120]);
-  const orbYSpring = useSpring(orbY, { 
-    stiffness: isMobile ? 120 : 140, 
-    damping: isMobile ? 30 : 25 
-  });
-
-  // Enhanced click/touch handler
+  
+  // Enhanced scroll-based animations
+  const heroY = useTransform(
+    scrollY,
+    [0, 500],
+    [0, isMobile ? -15 : -30]
+  );
+  
+  const heroOpacity = useTransform(
+    scrollY,
+    [0, 300],
+    [1, isMobile ? 0.97 : 0.95]
+  );
+  
+  const heroScale = useTransform(
+    scrollY,
+    [0, 500],
+    [1, isMobile ? 0.995 : 0.99]
+  );
+  
+  const parallaxY = useTransform(
+    scrollY,
+    [0, 1000],
+    [0, -60]
+  );
+  
+  const currentSpring = isMobile ? PREMIUM_SPRINGS.mobile : 
+                       isTablet ? PREMIUM_SPRINGS.responsive : 
+                       PREMIUM_SPRINGS.ultraSmooth;
+  
+  const heroYSpring = useSpring(heroY, currentSpring);
+  const heroScaleSpring = useSpring(heroScale, currentSpring);
+  const parallaxYSpring = useSpring(parallaxY, PREMIUM_SPRINGS.smooth);
+  
+  // Enhanced mouse tracking with animations
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  
+  useEffect(() => {
+    if (isMobile || reducedMotion || touchCapable) return;
+    
+    let animationId;
+    let rafId;
+    let lastX = 0;
+    let lastY = 0;
+    
+    const updateMousePosition = () => {
+      const currentX = mouseX.get();
+      const currentY = mouseY.get();
+      
+      if (Math.abs(currentX - lastX) > 0.001 || Math.abs(currentY - lastY) > 0.001) {
+        mouseX.set(currentX + (lastX - currentX) * 0.15);
+        mouseY.set(currentY + (lastY - currentY) * 0.15);
+      }
+      
+      rafId = requestAnimationFrame(updateMousePosition);
+    };
+    
+    const handleMouseMove = (e) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      if (!animationId) {
+        animationId = requestAnimationFrame(() => {
+          lastX = (e.clientX - rect.left) / rect.width - 0.5;
+          lastY = (e.clientY - rect.top) / rect.height - 0.5;
+          setMousePosition({
+            x: (e.clientX - rect.left) / rect.width * 100,
+            y: (e.clientY - rect.top) / rect.height * 100
+          });
+          animationId = null;
+        });
+      }
+    };
+    
+    rafId = requestAnimationFrame(updateMousePosition);
+    
+    const node = containerRef.current;
+    if (node) {
+      node.addEventListener('mousemove', handleMouseMove, { passive: true });
+    }
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      if (animationId) cancelAnimationFrame(animationId);
+      if (node) {
+        node.removeEventListener('mousemove', handleMouseMove);
+      }
+    };
+  }, [isMobile, reducedMotion, touchCapable, mouseX, mouseY]);
+  
+  // Enhanced 3D effects
+  const rotateY = useTransform(
+    mouseX, 
+    [-0.5, 0.5], 
+    (isMobile || reducedMotion || touchCapable) ? [0, 0] : [6, -6]
+  );
+  const rotateX = useTransform(
+    mouseY, 
+    [-0.5, 0.5], 
+    (isMobile || reducedMotion || touchCapable) ? [0, 0] : [-4, 4]
+  );
+  
+  const rotateYSpring = useSpring(rotateY, PREMIUM_SPRINGS.smooth);
+  const rotateXSpring = useSpring(rotateX, PREMIUM_SPRINGS.smooth);
+  
+  // Enhanced ripple effect with cooldown
+  const rippleCooldownRef = useRef(false);
+  const rippleTimeoutRef = useRef(null);
+  
   const handleInteraction = useCallback((e) => {
+    if (rippleCooldownRef.current || reducedMotion || dataSaver) return;
+    
+    rippleCooldownRef.current = true;
+    
+    if (rippleTimeoutRef.current) {
+      clearTimeout(rippleTimeoutRef.current);
+    }
+    
+    rippleTimeoutRef.current = setTimeout(() => {
+      rippleCooldownRef.current = false;
+    }, isMobile ? 250 : 180);
+    
     if (
-      e.target.tagName === 'INPUT' ||
-      e.target.tagName === 'TEXTAREA' ||
-      e.target.tagName === 'SELECT' ||
       e.target.closest('button') ||
       e.target.closest('a') ||
+      e.target.closest('input') ||
+      e.target.closest('textarea') ||
+      e.target.closest('select') ||
       e.target.closest('[data-no-ripple]')
     ) {
       return;
     }
-
+    
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-
-    let clientX, clientY;
-    if (e.type.includes('touch')) {
-      const touch = e.touches?.[0] || e.changedTouches?.[0];
-      if (!touch) return;
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
+    
+    const x = (e.clientX || e.touches?.[0]?.clientX || e.changedTouches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY || e.changedTouches?.[0]?.clientY) - rect.top;
+    
+    if (!x || !y) return;
+    
     const colors = [
-      'rgba(16, 185, 129, 0.6)',
-      'rgba(52, 211, 153, 0.6)',
-      'rgba(34, 197, 94, 0.6)',
-      'rgba(5, 150, 105, 0.6)'
+      'rgba(16, 185, 129, 0.8)',
+      'rgba(52, 211, 153, 0.8)',
+      'rgba(34, 197, 94, 0.8)'
     ];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-
-    // Main ripple
+    
     const newRipple = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       x,
       y,
-      color,
-      type: 'ripple',
-      isMobile
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: isMobile ? 0.7 : isTablet ? 0.85 : 1
     };
-
-    // Secondary sparkles
-    const sparkleCount = isMobile ? 1 : 3;
-    for (let i = 0; i < sparkleCount; i++) {
+    
+    setRipples(prev => {
+      const newArray = [...prev.slice(-2), newRipple];
+      return newArray;
+    });
+    
+    // Add particle burst effect
+    if (!reducedMotion && !dataSaver) {
       setTimeout(() => {
-        const sparkle = {
-          id: Date.now() + i,
-          x: x + (Math.random() * (isMobile ? 40 : 60) - (isMobile ? 20 : 30)),
-          y: y + (Math.random() * (isMobile ? 40 : 60) - (isMobile ? 20 : 30)),
-          color: colors[Math.floor(Math.random() * colors.length)],
-          type: 'sparkle',
-          isMobile
-        };
-        setRipples(prev => [...prev, sparkle]);
-        
-        setTimeout(() => {
-          setRipples(prev => prev.filter(r => r.id !== sparkle.id));
-        }, isMobile ? 400 : 600);
-      }, i * (isMobile ? 150 : 100));
+        setRipples(prev => prev.filter(r => r.id !== newRipple.id));
+      }, 900);
     }
-
-    setRipples(prev => [...prev, newRipple]);
-
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
-    }, isMobile ? 900 : 1200);
-  }, [isMobile]);
-
-  // Enhanced hover/touch move handler
+  }, [isMobile, isTablet, reducedMotion, dataSaver]);
+  
+  // Enhanced movement tracking
   const handleMove = useCallback((e) => {
+    if (reducedMotion) return;
+    
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-
-    let clientX, clientY;
-    if (e.type.includes('touch')) {
-      const touch = e.touches[0];
-      if (!touch) return;
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
     
-    setTouchPosition({ x, y });
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
     
-    if (!isMobile) {
-      setHoverGlow({ x, y, active: true });
+    if (x && y) {
+      requestAnimationFrame(() => {
+        setTouchPosition({ x, y });
+      });
     }
-
-    // Create occasional floating icons on hover
-    if (!isMobile && Math.random() > 0.97 && floatingIcons.length < 5) {
-      const icons = ['🍏', '🥦', '🥑', '🍓', '🥝', '💚', '✨', '🌱'];
-      const colors = ['#10B981', '#34D399', '#22C55E'];
-      setFloatingIcons(prev => [...prev, {
-        id: Date.now(),
-        icon: icons[Math.floor(Math.random() * icons.length)],
-        color: colors[Math.floor(Math.random() * colors.length)],
-        x: x,
-        y: y
-      }]);
+  }, [reducedMotion]);
+  
+  // Data sections with enhanced animations
+  const sections = useMemo(() => [
+    { 
+      title: "Our Mission", 
+      content: "To empower everyone to eat smarter, live better, and understand food in a way that promotes lifelong wellness." 
+    },
+    { 
+      title: "Why Choose Us", 
+      content: (
+        <div className="space-y-3">
+          {[
+            { icon: "⚡", text: "Instant product scanning and nutrition analysis" },
+            { icon: "🤖", text: "AI-based health recommendations" },
+            { icon: "🔒", text: "100% privacy-focused — no data sharing" },
+            { icon: "📊", text: "Trusted data and ingredient breakdown" },
+            { icon: "🎯", text: "Minimal design, easy to use interface" }
+          ].map((item, idx) => (
+            <motion.div 
+              key={idx}
+              className="flex items-start gap-3 group"
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ 
+                delay: idx * 0.1,
+                type: "spring",
+                stiffness: 200,
+                damping: 25
+              }}
+              whileHover={!reducedMotion ? {
+                x: 5,
+                transition: PREMIUM_SPRINGS.hover
+              } : undefined}
+            >
+              <motion.span 
+                className="text-green-500 text-lg"
+                animate={!reducedMotion ? {
+                  rotate: [0, 10, -10, 0],
+                  scale: [1, 1.2, 1]
+                } : {}}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: idx * 0.5
+                }}
+                whileHover={!reducedMotion ? {
+                  rotate: 360,
+                  scale: 1.3,
+                  transition: { duration: 0.5, ease: "easeInOut" }
+                } : {}}
+              >
+                {item.icon}
+              </motion.span>
+              <motion.span 
+                className="text-gray-600 flex-1"
+                whileHover={!reducedMotion ? {
+                  color: "#10B981",
+                  transition: { duration: 0.3 }
+                } : {}}
+              >
+                {item.text}
+              </motion.span>
+            </motion.div>
+          ))}
+        </div>
+      )
+    },
+    { 
+      title: "Our Vision", 
+      content: "To build a world where food transparency is universal, and every individual can make healthy decisions with confidence." 
+    },
+    { 
+      title: "Food Scan", 
+      content: "Instantly scan packaged food items to reveal their nutritional value, additives, and health impact. PureScan helps you avoid harmful ingredients and choose better alternatives — all in one tap." 
+    },
+    { 
+      title: "Cosmetics Scan", 
+      content: "Decode cosmetic product labels and ingredients to understand their safety, skin impact, and allergen risks. PureScan ensures you're informed before you apply." 
     }
-  }, [isMobile, floatingIcons.length]);
-
-  // Enhanced mouse effects (desktop only)
+  ], [reducedMotion]);
+  
+  const stats = useMemo(() => [
+    { value: "50K+", label: "Health Enthusiasts", color: "#10B981" },
+    { value: "10K+", label: "Products Scanned", color: "#059669" },
+    { value: "4.9★", label: "Average Rating", color: "#047857" },
+    { value: "100%", label: "Privacy Guarantee", color: "#7C3AED" }
+  ], []);
+  
+  // Mouse trail effect for hero section
+  const heroTrailRef = useRef(null);
+  
   useEffect(() => {
-    if (isMobile) return;
-
-    const onMove = (e) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      
-      mouseX.set(nx);
-      mouseY.set(ny);
-      
-      // Enhanced orb movement
-      orb1X.set(nx * -40);
-      orb1Y.set(ny * -30);
-      orb2X.set(nx * 30);
-      orb2Y.set(ny * 25);
-    };
-
-    const onLeave = () => {
-      animate(mouseX, 0, { type: "spring", stiffness: 100, damping: 15 });
-      animate(mouseY, 0, { type: "spring", stiffness: 100, damping: 15 });
-      animate(orb1X, 0, { type: "spring", stiffness: 90, damping: 15 });
-      animate(orb1Y, 0, { type: "spring", stiffness: 90, damping: 15 });
-      animate(orb2X, 0, { type: "spring", stiffness: 90, damping: 15 });
-      animate(orb2Y, 0, { type: "spring", stiffness: 90, damping: 15 });
-      setHoverGlow(prev => ({ ...prev, active: false }));
-    };
-
-    const node = containerRef.current;
-    if (node) {
-      node.addEventListener("pointermove", onMove);
-      node.addEventListener("pointerleave", onLeave);
-    }
+    if (!heroTrailRef.current || reducedMotion || isMobile || touchCapable) return;
     
+    heroTrailRef.current.style.left = `${mousePosition.x}%`;
+    heroTrailRef.current.style.top = `${mousePosition.y}%`;
+  }, [mousePosition, reducedMotion, isMobile, touchCapable]);
+  
+  // Cleanup
+  useEffect(() => {
     return () => {
-      if (node) {
-        node.removeEventListener("pointermove", onMove);
-        node.removeEventListener("pointerleave", onLeave);
+      if (rippleTimeoutRef.current) {
+        clearTimeout(rippleTimeoutRef.current);
       }
     };
-  }, [isMobile, mouseX, mouseY, orb1X, orb1Y, orb2X, orb2Y]);
-
-  // 3D rotation (desktop only)
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], isMobile ? [0, 0] : [12, -12]);
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], isMobile ? [0, 0] : [-8, 8]);
-  const rotateYSpring = useSpring(rotateY, { stiffness: 250, damping: 28 });
-  const rotateXSpring = useSpring(rotateX, { stiffness: 250, damping: 28 });
-
-  // Mobile-optimized Particle Background
-  const particleOptions = {
-    particles: {
-      number: { 
-        value: isMobile ? 50 : 80, 
-        density: { 
-          enable: true, 
-          value_area: isMobile ? 600 : 800 
-        } 
-      },
-      color: { value: ["#22c55e", "#10b981", "#34d399", "#059669"] },
-      shape: { type: "circle" },
-      opacity: { 
-        value: isMobile ? 0.15 : 0.2, 
-        random: true, 
-        animation: { 
-          enable: true, 
-          speed: 1, 
-          minimumValue: 0.1 
-        } 
-      },
-      size: { 
-        value: isMobile ? 2.5 : 3, 
-        random: true, 
-        animation: { 
-          enable: true, 
-          speed: 2, 
-          minimumValue: 1 
-        } 
-      },
-      move: {
-        enable: true,
-        speed: isMobile ? 0.4 : 0.5,
-        direction: "none",
-        random: true,
-        straight: false,
-        outMode: "bounce",
-        attract: { enable: true, rotateX: 600, rotateY: 1200 }
-      }
-    },
-    interactivity: {
-      events: {
-        onhover: { enable: !isMobile, mode: "repulse" },
-        onclick: { enable: true, mode: "push" }
-      }
-    },
-    detectRetina: true
-  };
-
+  }, []);
+  
   return (
     <div 
       ref={containerRef}
@@ -375,272 +1286,92 @@ const AboutUs = () => {
       onTouchStart={handleInteraction}
       onTouchMove={handleMove}
       onMouseMove={!isMobile ? handleMove : undefined}
-      onMouseLeave={() => !isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      onTouchEnd={() => isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      className="relative min-h-screen flex flex-col bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default px-4"
+      className="relative min-h-screen w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 font-sans cursor-default overflow-hidden"
       style={{
         WebkitTapHighlightColor: 'transparent',
-        touchAction: 'pan-y'
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
+        transform: 'translate3d(0,0,0)'
       }}
+      data-performance-optimized="true"
+      data-reduced-motion={reducedMotion}
+      data-device-type={isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}
     >
-      {/* Interactive Background Layer */}
-      <InteractiveBackground isMobile={isMobile} />
+      {/* Enhanced Scroll Progress */}
+      <PremiumScrollProgress scrollYProgress={scrollYProgress} />
       
-      {/* Enhanced Particle Background */}
-      <Particles
-        className="absolute inset-0 -z-10"
-        options={particleOptions}
+      {/* Enhanced Background Effects */}
+      <Suspense fallback={null}>
+        <PremiumInteractiveBackground 
+          isMobile={isMobile}
+          isTablet={isTablet}
+          reducedMotion={reducedMotion}
+          dataSaver={dataSaver}
+        />
+        <PremiumParticleBackground 
+          isMobile={isMobile}
+          isTablet={isTablet}
+          reducedMotion={reducedMotion}
+          dataSaver={dataSaver}
+        />
+      </Suspense>
+      
+      {/* Enhanced Background Orbs */}
+      <PremiumBackgroundOrbs 
+        isMobile={isMobile}
+        isTablet={isTablet}
+        reducedMotion={reducedMotion}
+        dataSaver={dataSaver}
       />
-
-      {/* Enhanced Ripple Effects */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
-        <AnimatePresence>
-          {ripples.map(ripple => (
-            ripple.type === 'ripple' ? (
-              <motion.div
-                key={ripple.id}
-                className="absolute pointer-events-none rounded-full"
-                initial={{
-                  scale: 0,
-                  opacity: 0.7,
-                  x: ripple.x - (ripple.isMobile ? 15 : 20),
-                  y: ripple.y - (ripple.isMobile ? 15 : 20),
-                  width: ripple.isMobile ? 30 : 40,
-                  height: ripple.isMobile ? 30 : 40,
-                  background: `radial-gradient(circle, ${ripple.color}, ${ripple.color.replace('0.6', '0.2')})`
-                }}
-                animate={{
-                  scale: [0, ripple.isMobile ? 3 : 4, ripple.isMobile ? 3.5 : 5],
-                  opacity: [0.7, 0.3, 0],
-                  width: [
-                    ripple.isMobile ? 30 : 40, 
-                    ripple.isMobile ? 120 : 160, 
-                    ripple.isMobile ? 140 : 200
-                  ],
-                  height: [
-                    ripple.isMobile ? 30 : 40, 
-                    ripple.isMobile ? 120 : 160, 
-                    ripple.isMobile ? 140 : 200
-                  ],
-                  x: [
-                    ripple.x - (ripple.isMobile ? 15 : 20), 
-                    ripple.x - (ripple.isMobile ? 60 : 80), 
-                    ripple.x - (ripple.isMobile ? 70 : 100)
-                  ],
-                  y: [
-                    ripple.y - (ripple.isMobile ? 15 : 20), 
-                    ripple.y - (ripple.isMobile ? 60 : 80), 
-                    ripple.y - (ripple.isMobile ? 70 : 100)
-                  ]
-                }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: ripple.isMobile ? 0.9 : 1.2,
-                  ease: "easeOut"
-                }}
-                style={{
-                  filter: `blur(${ripple.isMobile ? 8 : 12}px)`,
-                  mixBlendMode: "screen"
-                }}
-              />
-            ) : (
-              <motion.div
-                key={ripple.id}
-                className="absolute pointer-events-none"
-                initial={{
-                  x: ripple.x - (ripple.isMobile ? 8 : 10),
-                  y: ripple.y - (ripple.isMobile ? 8 : 10),
-                  scale: 0,
-                  opacity: 0,
-                  rotate: 0
-                }}
-                animate={{
-                  scale: [0, 1.5, 0],
-                  opacity: [0, 1, 0],
-                  rotate: [0, 180],
-                  y: [ripple.y - (ripple.isMobile ? 8 : 10), ripple.y - (ripple.isMobile ? 30 : 40)]
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: ripple.isMobile ? 0.6 : 0.8 }}
-                style={{
-                  width: ripple.isMobile ? '16px' : '20px',
-                  height: ripple.isMobile ? '16px' : '20px',
-                  background: `radial-gradient(circle, ${ripple.color}, transparent 70%)`,
-                  borderRadius: '50%'
-                }}
-              />
-            )
-          ))}
-        </AnimatePresence>
-
-        {/* Enhanced Hover Glow (Desktop only) */}
-        {!isMobile && (
-          <motion.div
-            className="absolute pointer-events-none rounded-full"
-            animate={{
-              scale: hoverGlow.active ? 1 : 0,
-              opacity: hoverGlow.active ? 0.3 : 0,
-              x: hoverGlow.x - 75,
-              y: hoverGlow.y - 75
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 200,
-              damping: 25
-            }}
-            style={{
-              width: 150,
-              height: 150,
-              background: "radial-gradient(circle, rgba(34,197,94,0.4), rgba(16,185,129,0.15), transparent 70%)",
-              filter: "blur(20px)"
-            }}
-          />
-        )}
-
-        {/* Touch/Mouse Trail Effect */}
-        <motion.div
-          className="absolute pointer-events-none rounded-full"
-          animate={{
-            x: touchPosition.x - (isMobile ? 6 : 8),
-            y: touchPosition.y - (isMobile ? 6 : 8)
-          }}
-          transition={{
-            type: "spring",
-            stiffness: isMobile ? 600 : 500,
-            damping: isMobile ? 35 : 30
-          }}
+      
+      {/* Enhanced Floating Elements */}
+      <PremiumFloatingElements 
+        isMobile={isMobile}
+        isTablet={isTablet}
+        reducedMotion={reducedMotion}
+        dataSaver={dataSaver}
+      />
+      
+      {/* Mouse trail for hero section */}
+      {!reducedMotion && !isMobile && !touchCapable && (
+        <div
+          ref={heroTrailRef}
+          className="absolute pointer-events-none rounded-full z-20 transition-all duration-200 ease-out"
           style={{
-            width: isMobile ? 12 : 16,
-            height: isMobile ? 12 : 16,
-            background: "radial-gradient(circle, rgba(34,197,94,0.2), rgba(16,185,129,0.05))",
-            border: `2px solid rgba(34,197,94,${isMobile ? 0.2 : 0.3})`,
-            filter: 'blur(1px)'
+            width: '100px',
+            height: '100px',
+            background: 'radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 70%)',
+            filter: 'blur(20px)',
+            opacity: 0.5,
+            transform: 'translate3d(-50%, -50%, 0)',
+            willChange: 'left, top'
           }}
         />
-      </div>
-
-      {/* Floating Icons (Desktop only) */}
-      {!isMobile && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-          <AnimatePresence>
-            {floatingIcons.map(icon => (
-              <motion.div
-                key={icon.id}
-                className="absolute pointer-events-none text-2xl"
-                initial={{
-                  x: icon.x,
-                  y: icon.y,
-                  scale: 0,
-                  opacity: 0,
-                  rotate: 0
-                }}
-                animate={{
-                  scale: [0, 1, 1, 0],
-                  opacity: [0, 1, 1, 0],
-                  y: [icon.y, icon.y - 150],
-                  rotate: [0, 360]
-                }}
-                exit={{ opacity: 0 }}
-                onAnimationComplete={() => {
-                  setFloatingIcons(prev => prev.filter(i => i.id !== icon.id));
-                }}
-                transition={{ duration: 3 }}
-                style={{
-                  color: icon.color,
-                  filter: 'drop-shadow(0 6px 20px rgba(0,0,0,0.15))'
-                }}
-              >
-                {icon.icon}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
       )}
-
-      {/* Enhanced Background Orbs with Parallax */}
-      {!isMobile && (
-        <>
-          <motion.div
-            style={{ y: orbYSpring, x: orb1X }}
-            className="absolute -top-60 -left-60 w-[45rem] h-[45rem] rounded-full pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.2,
-              scale: [1, 1.15, 1],
-              rotate: [0, 5, 0]
-            }}
-            transition={{ 
-              duration: 8, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-green-400 via-emerald-400 to-teal-300 blur-[140px]" />
-          </motion.div>
-
-          <motion.div
-            style={{ y: orb2Y, x: orb2X }}
-            className="absolute -right-40 -bottom-40 w-[35rem] h-[35rem] rounded-full pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.2,
-              scale: [1, 1.12, 1],
-              rotate: [0, -5, 0]
-            }}
-            transition={{ 
-              duration: 7, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-300 via-emerald-300 to-green-400 blur-[140px]" />
-          </motion.div>
-        </>
-      )}
-
-      {/* Mobile-optimized Background Orbs */}
-      {isMobile && (
-        <>
-          <motion.div
-            style={{ y: orbYSpring }}
-            className="absolute -top-40 -left-40 w-[30rem] h-[30rem] rounded-full pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.15,
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ 
-              duration: 8, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300 via-emerald-300 to-teal-200 blur-[100px]" />
-          </motion.div>
-
-          <motion.div
-            style={{ y: orbYSpring }}
-            className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.15,
-              scale: [1, 1.08, 1]
-            }}
-            transition={{ 
-              duration: 7, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200 via-emerald-200 to-green-300 blur-[100px]" />
-          </motion.div>
-        </>
-      )}
-
-      {/* Main Content */}
-      <div className="relative z-10 flex-grow py-8 sm:py-12">
+      
+      {/* Enhanced Interactive Effects */}
+      <PremiumRippleEffect 
+        ripples={ripples}
+        isMobile={isMobile}
+        isTablet={isTablet}
+        reducedMotion={reducedMotion}
+      />
+      
+      <PremiumTouchTrail 
+        position={touchPosition}
+        isScrolling={isScrolling}
+        reducedMotion={reducedMotion}
+      />
+      
+      {/* Main Content Container */}
+      <div 
+        ref={contentRef}
+        className="relative z-10 flex-grow w-full overflow-visible"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: reducedMotion ? 'auto' : 'smooth'
+        }}
+      >
         <motion.div
           style={{ 
             scale: heroScaleSpring,
@@ -648,264 +1379,346 @@ const AboutUs = () => {
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-gray-900 px-4 sm:px-6 lg:px-8"
+          transition={{ 
+            duration: reducedMotion ? 0 : 0.8,
+            ease: PREMIUM_EASING.premiumEnter
+          }}
+          className="text-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 w-full max-w-full"
         >
-          {/* Hero Section */}
+          {/* Enhanced Hero Section */}
           <motion.section
-            style={{ y: heroYSpring }}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.8 }}
+            style={{ 
+              y: heroYSpring,
+              rotateY: rotateYSpring,
+              rotateX: rotateXSpring
+            }}
             className="max-w-4xl mx-auto mb-12 sm:mb-16 relative"
           >
-            {/* Hero Background Glow */}
-            {!isMobile && (
-              <motion.div
-                className="absolute inset-0 -z-10 rounded-3xl"
-                animate={{
-                  opacity: [0.1, 0.2, 0.1],
-                  scale: [1, 1.05, 1]
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                style={{
-                  background: "radial-gradient(circle at center, rgba(34,197,94,0.15), transparent 70%)",
-                  filter: "blur(40px)"
-                }}
-              />
-            )}
-
             <motion.div
               className="text-center"
-              whileHover={!isMobile ? { scale: 1.02 } : undefined}
+              whileHover={(!reducedMotion && canHover) ? { 
+                scale: 1.01,
+                transition: PREMIUM_SPRINGS.hover
+              } : undefined}
             >
               <motion.h1
-                animate={{
+                animate={reducedMotion || dataSaver ? {} : {
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                 }}
-                transition={{
-                  duration: 8,
+                transition={reducedMotion || dataSaver ? {} : {
+                  duration: 15,
                   repeat: Infinity,
                   ease: "linear"
                 }}
-                className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : 'text-5xl sm:text-6xl'} mb-6`}
+                className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-6xl'} mb-6`}
                 style={{
-                  background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
-                  backgroundSize: '300% 300%',
+                  background: dataSaver ? '#10B981' : 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+                  backgroundSize: dataSaver ? 'auto' : '400% 400%',
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
-                  color: 'transparent'
+                  color: 'transparent',
+                  willChange: reducedMotion ? 'auto' : 'background-position'
                 }}
+                whileHover={!reducedMotion && canHover ? {
+                  scale: 1.02,
+                  transition: { duration: 0.3, ease: "easeInOut" }
+                } : {}}
               >
                 About Us
               </motion.h1>
               
-              {/* Animated Underline */}
               <motion.div
-                className={`bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-8 ${isMobile ? 'h-0.5' : 'h-1'}`}
+                className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mb-8 h-1"
                 initial={{ width: 0 }}
                 animate={{ width: "200px" }}
-                transition={{ duration: 1.5, delay: 0.5 }}
-                whileHover={!isMobile ? { scaleY: 2 } : undefined}
+                transition={{ 
+                  duration: reducedMotion ? 0 : 1.5, 
+                  delay: 0.5,
+                  ease: PREMIUM_EASING.easeOutQuint
+                }}
+                whileHover={!reducedMotion && canHover ? {
+                  scaleX: 1.2,
+                  transition: { duration: 0.3 }
+                } : {}}
               />
               
               <motion.p
-                animate={{ 
-                  opacity: [0.9, 1, 0.9],
-                  y: [0, -2, 0]
+                animate={reducedMotion || dataSaver ? {} : { 
+                  opacity: [0.95, 1, 0.95]
                 }}
-                transition={{ 
-                  duration: 4, 
+                transition={reducedMotion || dataSaver ? {} : { 
+                  duration: 3, 
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className={`text-gray-700 max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : 'text-xl'}`}
+                className={`text-gray-700 max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : isTablet ? 'text-xl' : 'text-2xl'}`}
+                whileHover={!reducedMotion && canHover ? {
+                  scale: 1.01,
+                  transition: { duration: 0.3 }
+                } : {}}
               >
                 PureScan is built to help people make better food choices. 
-                <span className="block mt-2 text-green-600 font-semibold">
+                <motion.span 
+                  className="block mt-3 text-green-600 font-semibold"
+                  animate={!reducedMotion ? {
+                    scale: [1, 1.02, 1]
+                  } : {}}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  whileHover={!reducedMotion && canHover ? {
+                    color: "#059669",
+                    scale: 1.05,
+                    transition: { duration: 0.3 }
+                  } : {}}
+                >
                   Your health companion in every scan.
-                </span>
+                </motion.span>
               </motion.p>
             </motion.div>
           </motion.section>
-
-          {/* Content Sections - PRIVACY POLICY STYLE */}
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ 
-              once: true,
-              amount: isMobile ? 0.1 : 0.3,
-              margin: isMobile ? "0px" : "-100px"
-            }}
-            variants={{ 
-              hidden: { opacity: 0 },
-              visible: { 
-                opacity: 1,
-                transition: { staggerChildren: isMobile ? 0.1 : 0.15 }
-              }
-            }}
-            className="max-w-4xl mx-auto"
-          >
-            {/* Paragraphs */}
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="group relative cursor-pointer mb-8"
-            >
-              {/* Card Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500 p-6" />
-              
-              <div className="relative p-6">
-                <motion.p 
-                  whileHover={!isMobile ? { x: 5 } : undefined}
-                  className="text-gray-600 leading-relaxed text-center"
-                >
-                  PureScan is built to help people make better food choices. It scans food items, evaluates their nutritional quality, and helps users stay aware of what they consume daily.
-                </motion.p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="group relative cursor-pointer mb-8"
-            >
-              {/* Card Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500 p-6" />
-              
-              <div className="relative p-6">
-                <motion.p 
-                  whileHover={!isMobile ? { x: 5 } : undefined}
-                  className="text-gray-600 leading-relaxed text-center"
-                >
-                  Our goal is to simplify food awareness using modern technology and science-backed nutrition data — so that choosing healthy products becomes effortless.
-                </motion.p>
-              </div>
-            </motion.div>
-
-            {/* Sections in Privacy Policy Style */}
+          
+          {/* Enhanced Introductory Cards */}
+          <div className="max-w-4xl mx-auto mb-12">
             {[
-              { 
-                title: "Our Mission", 
-                content: "To empower everyone to eat smarter, live better, and understand food in a way that promotes lifelong wellness." 
-              },
-              { 
-                title: "Why Choose Us", 
-                content: (
-                  <ul className="list-disc pl-6 space-y-2">
-                    {[
-                      "Instant product scanning and nutrition analysis",
-                      "AI-based health recommendations",
-                      "Trusted data and ingredient breakdown",
-                      "Minimal design, easy to use interface",
-                      "100% privacy-focused — no data sharing"
-                    ].map((item, idx) => (
-                      <li key={idx} className="text-gray-600 leading-relaxed">{item}</li>
-                    ))}
-                  </ul>
-                )
-              },
-              { 
-                title: "Our Vision", 
-                content: "To build a world where food transparency is universal, and every individual can make healthy decisions with confidence." 
-              },
-              { 
-                title: "Food Scan", 
-                content: "Instantly scan packaged food items to reveal their nutritional value, additives, and health impact. PureScan helps you avoid harmful ingredients and choose better alternatives — all in one tap." 
-              },
-              { 
-                title: "Cosmetics Scan", 
-                content: "Decode cosmetic product labels and ingredients to understand their safety, skin impact, and allergen risks. PureScan ensures you're informed before you apply." 
-              }
-            ].map((section, idx) => (
-              <motion.div
+              "PureScan is built to help people make better food choices. It scans food items, evaluates their nutritional quality, and helps users stay aware of what they consume daily.",
+              "Our goal is to simplify food awareness using modern technology and science-backed nutrition data — so that choosing healthy products becomes effortless."
+            ].map((text, idx) => (
+              <PremiumCard 
                 key={idx}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="group relative cursor-pointer mb-8"
+                isMobile={isMobile}
+                isTablet={isTablet}
+                reducedMotion={reducedMotion}
+                touchCapable={touchCapable}
+                canHover={canHover}
+                className="mb-6"
               >
-                {/* Card Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500" />
-                
-                {/* Content */}
-                <div className="relative p-6">
-                  <motion.h2 
-                    whileHover={!isMobile ? { scale: 1.05, color: "#059669" } : undefined} 
-                    className="font-bold text-green-800 text-center mb-4 text-xl"
-                  >
-                    {section.title}
-                  </motion.h2>
-                  
-                  <motion.div 
-                    className="text-gray-600 leading-relaxed"
-                    whileHover={!isMobile ? { x: 5 } : undefined}
-                  >
-                    {typeof section.content === "string" ? (
-                      <p className="text-center">{section.content}</p>
-                    ) : (
-                      section.content
-                    )}
-                  </motion.div>
-                </div>
-              </motion.div>
+                <motion.p 
+                  className="text-gray-600 leading-relaxed text-center"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.2 }}
+                  whileHover={!reducedMotion && canHover ? {
+                    scale: 1.01,
+                    transition: { duration: 0.3 }
+                  } : {}}
+                >
+                  {text}
+                </motion.p>
+              </PremiumCard>
             ))}
-          </motion.div>
-
-          {/* Stats Section for Mobile - PRIVACY POLICY STYLE */}
-          {isMobile && (
-            <motion.div
+          </div>
+          
+          {/* Enhanced Main Content Sections */}
+          <div className="max-w-4xl mx-auto mb-12">
+            {sections.map((section, idx) => (
+              <PremiumCard 
+                key={idx}
+                isMobile={isMobile}
+                isTablet={isTablet}
+                reducedMotion={reducedMotion}
+                touchCapable={touchCapable}
+                canHover={canHover}
+                className="mb-8"
+              >
+                <motion.h2 
+                  className="font-bold text-green-800 text-center mb-6 text-xl sm:text-2xl"
+                  initial={{ opacity: 0, y: -10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 }}
+                  whileHover={!reducedMotion && canHover ? {
+                    color: "#059669",
+                    scale: 1.05,
+                    transition: { duration: 0.3 }
+                  } : {}}
+                >
+                  {section.title}
+                </motion.h2>
+                
+                <motion.div 
+                  className="text-gray-600 leading-relaxed"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {typeof section.content === "string" ? (
+                    <motion.p 
+                      className="text-center"
+                      whileHover={!reducedMotion && canHover ? {
+                        scale: 1.01,
+                        transition: { duration: 0.3 }
+                      } : {}}
+                    >
+                      {section.content}
+                    </motion.p>
+                  ) : (
+                    section.content
+                  )}
+                </motion.div>
+              </PremiumCard>
+            ))}
+          </div>
+          
+          {/* Enhanced Stats Section */}
+          <div className="max-w-4xl mx-auto mb-16">
+            <motion.h3
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="mt-8 pt-6 border-t border-green-100"
+              transition={{ 
+                duration: 0.5,
+                type: "spring",
+                stiffness: 200,
+                damping: 25
+              }}
+              className={`font-bold text-green-700 mb-8 text-center ${isMobile ? 'text-xl' : 'text-2xl'}`}
+              whileHover={!reducedMotion && canHover ? {
+                scale: 1.05,
+                color: "#047857",
+                transition: { duration: 0.3 }
+              } : {}}
             >
-              <h3 className="text-lg font-semibold text-green-700 mb-4 text-center">
-                Our Impact
+              Our Impact
+            </motion.h3>
+            
+            <div className={`grid ${isMobile ? 'grid-cols-2 gap-4' : 'grid-cols-4 gap-6'} text-center`}>
+              {stats.map((stat, idx) => (
+                <PremiumStat 
+                  key={idx}
+                  value={stat.value}
+                  label={stat.label}
+                  color={stat.color}
+                  index={idx}
+                  isMobile={isMobile}
+                  reducedMotion={reducedMotion}
+                />
+              ))}
+            </div>
+          </div>
+          
+          {/* Enhanced Closing Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "100px" }}
+            transition={{ 
+              duration: reducedMotion ? 0 : 0.8,
+              ease: PREMIUM_EASING.premiumEnter
+            }}
+            className="max-w-3xl mx-auto"
+          >
+            <PremiumCard 
+              isMobile={isMobile}
+              isTablet={isTablet}
+              reducedMotion={reducedMotion}
+              touchCapable={touchCapable}
+              canHover={canHover}
+              className="text-center"
+            >
+              <h3 className="text-xl sm:text-2xl font-bold text-green-800 mb-4">
+                Join Our Health Revolution
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { value: "50K+", label: "Users", color: "#10B981" },
-                  { value: "10K+", label: "Products", color: "#059669" },
-                  { value: "4.9★", label: "Rating", color: "#047857" },
-                  { value: "100%", label: "Privacy", color: "#7C3AED" }
-                ].map((stat, idx) => (
-                  <motion.div
-                    key={idx}
-                    className="bg-white/60 backdrop-blur-sm rounded-xl p-3 shadow-sm"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: idx * 0.1 }}
+              <p className="text-gray-600 leading-relaxed mb-6">
+                Be part of a growing community that values health, transparency, and smart choices. 
+                Start your journey towards better eating habits today.
+              </p>
+              <motion.div
+                whileHover={!reducedMotion ? { 
+                  scale: 1.05,
+                  transition: PREMIUM_SPRINGS.hover
+                } : undefined}
+                whileTap={touchCapable ? { scale: 0.95 } : undefined}
+                className="inline-block"
+              >
+                <motion.a
+                  href="/"
+                  className="group relative inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold overflow-hidden px-6 py-3 text-base shadow-lg sm:px-8 sm:py-4 sm:text-lg"
+                  data-no-ripple="true"
+                  whileHover={!reducedMotion ? {
+                    scale: 1.1,
+                    boxShadow: "0 10px 40px rgba(16,185,129,0.5)",
+                    transition: { duration: 0.3 }
+                  } : {}}
+                >
+                  {/* Animated background on hover */}
+                  <motion.span
+                    className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-500"
+                    initial={{ x: '-100%' }}
+                    whileHover={{ x: '100%' }}
+                    transition={{
+                      duration: 0.6,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  <motion.span
+                    animate={!reducedMotion ? { rotate: [0, 360] } : {}}
+                    transition={reducedMotion ? {} : { 
+                      duration: 20, 
+                      repeat: Infinity, 
+                      ease: "linear"
+                    }}
+                    className="text-xl relative z-10"
                   >
-                    <div
-                      className="font-bold text-xl mb-1"
-                      style={{ color: stat.color }}
-                    >
-                      {stat.value}
+                    
+                  </motion.span>
+                  <motion.span 
+                    className="relative z-10"
+                    whileHover={!reducedMotion ? {
+                      scale: 1.1,
+                      transition: { duration: 0.2 }
+                    } : {}}
+                  >
+                    Back to Home
+                  </motion.span>
+                  
+                  {/* Particle effect on hover */}
+                  {!reducedMotion && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute rounded-full"
+                          initial={{
+                            x: '50%',
+                            y: '50%',
+                            scale: 0,
+                            opacity: 0
+                          }}
+                          whileHover={{
+                            x: `calc(50% + ${Math.cos((i / 12) * Math.PI * 2) * 100}px)`,
+                            y: `calc(50% + ${Math.sin((i / 12) * Math.PI * 2) * 100}px)`,
+                            scale: [0, 1, 0],
+                            opacity: [0, 0.8, 0]
+                          }}
+                          transition={{
+                            duration: 0.8,
+                            delay: i * 0.05,
+                            ease: "easeOut"
+                          }}
+                          style={{
+                            width: '4px',
+                            height: '4px',
+                            background: 'rgba(255,255,255,0.8)',
+                            filter: 'blur(1px)',
+                            willChange: 'transform, opacity',
+                            transform: 'translateZ(0)'
+                          }}
+                        />
+                      ))}
                     </div>
-                    <div className="text-gray-600 text-xs">
-                      {stat.label}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                  )}
+                </motion.a>
+              </motion.div>
+            </PremiumCard>
+          </motion.div>
+          
+          {/* Spacing */}
+          <div className="h-16 sm:h-20" />
         </motion.div>
       </div>
     </div>

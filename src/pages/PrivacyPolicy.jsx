@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+// Ultra Optimized Privacy Policy Component with Zero Lag
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   motion,
@@ -10,13 +11,40 @@ import {
   AnimatePresence
 } from "framer-motion";
 import Particles from 'react-tsparticles';
+import { loadSlim } from 'tsparticles-slim';
 
-// Mobile-optimized Micro Interaction Component
-const MicroInteraction = ({ type, x, y, color, isMobile }) => {
+// Performance Monitoring Hook (Dev only)
+const usePerformanceMonitor = () => {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      let frameCount = 0;
+      let lastTime = performance.now();
+      
+      const checkFPS = () => {
+        frameCount++;
+        const currentTime = performance.now();
+        if (currentTime >= lastTime + 1000) {
+          const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+          if (fps < 50) {
+            console.warn(`Performance Warning: FPS dropped to ${fps}`);
+          }
+          frameCount = 0;
+          lastTime = currentTime;
+        }
+        requestAnimationFrame(checkFPS);
+      };
+      
+      requestAnimationFrame(checkFPS);
+    }
+  }, []);
+};
+
+// Optimized Micro Interaction Component
+const MicroInteraction = React.memo(({ type, x, y, color, isMobile }) => {
   if (type === 'sparkle') {
     return (
       <motion.div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none will-change-transform gpu-accelerated"
         initial={{ x, y, scale: 0, opacity: 0 }}
         animate={{
           scale: [0, 1.2, 0],
@@ -28,7 +56,8 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
           width: isMobile ? '16px' : '20px',
           height: isMobile ? '16px' : '20px',
           background: `radial-gradient(circle, ${color}60, transparent 70%)`,
-          borderRadius: '50%'
+          borderRadius: '50%',
+          transform: 'translateZ(0)'
         }}
       />
     );
@@ -37,7 +66,7 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
   if (type === 'pulse') {
     return (
       <motion.div
-        className="absolute pointer-events-none rounded-full"
+        className="absolute pointer-events-none rounded-full will-change-transform"
         initial={{ x: x - (isMobile ? 10 : 15), y: y - (isMobile ? 10 : 15), scale: 0, opacity: 0.7 }}
         animate={{
           scale: [0, 1.5],
@@ -48,47 +77,73 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
           width: isMobile ? '24px' : '30px',
           height: isMobile ? '24px' : '30px',
           background: color,
-          filter: 'blur(4px)'
+          filter: 'blur(4px)',
+          transform: 'translateZ(0)'
         }}
       />
     );
   }
   
   return null;
-};
+});
 
-// Mobile-optimized Interactive Background with HOVER EFFECTS
-const InteractiveBackground = ({ isMobile }) => {
+MicroInteraction.displayName = 'MicroInteraction';
+
+// Optimized Interactive Background
+const InteractiveBackground = React.memo(({ isMobile }) => {
   const [interactions, setInteractions] = useState([]);
   
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Math.random() > 0.7 && interactions.length < (isMobile ? 4 : 8)) {
+      if (Math.random() > 0.7 && interactions.length < (isMobile ? 3 : 6)) {
         const type = Math.random() > 0.5 ? 'sparkle' : 'pulse';
         const colors = ['#10B981', '#34D399', '#22C55E', '#059669'];
-        setInteractions(prev => [...prev, {
-          id: Date.now(),
-          type,
-          x: Math.random() * 100 + '%',
-          y: Math.random() * 100 + '%',
-          color: colors[Math.floor(Math.random() * colors.length)]
-        }]);
+        setInteractions(prev => {
+          if (prev.length >= (isMobile ? 4 : 8)) {
+            return [...prev.slice(1), {
+              id: Date.now(),
+              type,
+              x: `${Math.random() * 100}%`,
+              y: `${Math.random() * 100}%`,
+              color: colors[Math.floor(Math.random() * colors.length)]
+            }];
+          }
+          return [...prev, {
+            id: Date.now(),
+            type,
+            x: `${Math.random() * 100}%`,
+            y: `${Math.random() * 100}%`,
+            color: colors[Math.floor(Math.random() * colors.length)]
+          }];
+        });
       }
-    }, isMobile ? 1200 : 800);
+    }, isMobile ? 1500 : 1000);
     
     return () => clearInterval(interval);
-  }, [interactions.length, isMobile]);
+  }, [isMobile]);
+  
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      setInteractions(prev => prev.filter(int => Date.now() - int.id < 2000));
+    }, 1000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
   
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {interactions.map(interaction => (
-        <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
-      ))}
+      <AnimatePresence>
+        {interactions.map(interaction => (
+          <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
+        ))}
+      </AnimatePresence>
     </div>
   );
-};
+});
 
-// REUSABLE SECTION COMPONENT - ENHANCED WITH HOVER EFFECTS
+InteractiveBackground.displayName = 'InteractiveBackground';
+
+// Optimized Section Component
 const Section = React.memo(({ title, children, isMobile, index }) => {
   const [isHovered, setIsHovered] = useState(false);
   
@@ -103,24 +158,26 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
           type: "spring",
           stiffness: isMobile ? 80 : 100,
           damping: isMobile ? 25 : 20,
-          delay: index * 0.1
+          delay: index * 0.1,
+          mass: 0.5
         }
       }}
       viewport={{ once: true, margin: "-50px" }}
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}
       whileHover={!isMobile ? {
-        y: -15,
+        y: -10,
         scale: 1.02,
         boxShadow: "0px 25px 70px rgba(16,185,129,0.25)",
-        transition: { type: "spring", stiffness: 200, damping: 15 }
+        transition: { type: "spring", stiffness: 200, damping: 15, mass: 0.3 }
       } : undefined}
       whileTap={isMobile ? { scale: 0.98 } : undefined}
-      className="group relative cursor-pointer mb-8"
+      className="group relative cursor-pointer mb-6 will-change-transform"
+      style={{ transform: 'translateZ(0)' }}
     >
-      {/* Card Background with HOVER EFFECT */}
+      {/* Card Background with Hover Effect */}
       <motion.div
-        className="absolute inset-0 rounded-2xl"
+        className="absolute inset-0 rounded-2xl gpu-accelerated"
         animate={isHovered && !isMobile ? {
           background: [
             "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(220,252,231,0.7) 100%)",
@@ -130,7 +187,7 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
         } : {}}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-500 rounded-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-300 rounded-2xl" />
       </motion.div>
       
       {/* Animated Glow on Hover */}
@@ -140,18 +197,15 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
           animate={isHovered ? {
             opacity: 0.6,
             scale: 1.05,
-            rotate: [0, 5, -5, 0]
           } : {
             opacity: 0,
             scale: 1
           }}
-          transition={{ 
-            duration: 0.8,
-            rotate: { duration: 4, repeat: Infinity }
-          }}
+          transition={{ duration: 0.4 }}
           style={{
             background: `radial-gradient(circle at center, #10B98140, transparent 70%)`,
-            filter: 'blur(25px)'
+            filter: 'blur(25px)',
+            transform: 'translateZ(0)'
           }}
         />
       )}
@@ -160,18 +214,18 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
       {!isMobile && isHovered && (
         <>
           <motion.div
-            className="absolute -top-2 -right-2 w-8 h-8 text-2xl"
-            initial={{ scale: 0, opacity: 0, rotate: -45 }}
-            animate={{ scale: 1, opacity: 0.7, rotate: 0 }}
+            className="absolute -top-2 -right-2 w-6 h-6 text-lg will-change-transform"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.7 }}
             transition={{ type: "spring", stiffness: 300 }}
             style={{ color: '#10B981' }}
           >
             🔒
           </motion.div>
           <motion.div
-            className="absolute -bottom-2 -left-2 w-8 h-8 text-2xl"
-            initial={{ scale: 0, opacity: 0, rotate: 45 }}
-            animate={{ scale: 1, opacity: 0.7, rotate: 0 }}
+            className="absolute -bottom-2 -left-2 w-6 h-6 text-lg will-change-transform"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.7 }}
             transition={{ type: "spring", stiffness: 300, delay: 0.1 }}
             style={{ color: '#34D399' }}
           >
@@ -181,52 +235,53 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
       )}
       
       {/* Content */}
-      <div className="relative p-6">
-        {/* Section Header with HOVER EFFECT */}
+      <div className="relative p-5 sm:p-6">
+        {/* Section Header */}
         <motion.div 
-          className="flex items-center gap-3 mb-4"
-          whileHover={!isMobile ? { x: 10 } : undefined}
+          className="flex items-center gap-3 mb-3 sm:mb-4"
+          whileHover={!isMobile ? { x: 5 } : undefined}
         >
           <motion.div
-            className="w-2 h-8 rounded-full bg-gradient-to-b from-green-500 to-emerald-500"
+            className="w-2 h-6 sm:h-8 rounded-full bg-gradient-to-b from-green-500 to-emerald-500 will-change-transform"
             animate={isHovered && !isMobile ? {
               scaleY: [1, 1.5, 1],
               opacity: [0.7, 1, 0.7]
             } : {}}
-            transition={{ duration: 1, repeat: Infinity }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            style={{ transform: 'translateZ(0)' }}
           />
           <motion.h2 
             animate={isHovered && !isMobile ? {
-              scale: 1.05,
-              x: 5,
-              textShadow: "0px 2px 10px rgba(16,185,129,0.3)"
+              scale: 1.03,
+              x: 3,
             } : {}}
-            className="font-bold text-green-800 text-xl"
+            className="font-bold text-green-800 text-lg sm:text-xl"
           >
             {title}
           </motion.h2>
         </motion.div>
         
-        {/* Section Content with HOVER EFFECT */}
+        {/* Section Content */}
         <motion.div 
-          className="text-gray-600 leading-relaxed"
+          className="text-gray-600 leading-relaxed text-sm sm:text-base"
           animate={isHovered && !isMobile ? {
-            x: 5,
+            x: 3,
             color: "#374151"
           } : {}}
         >
           {typeof children === "string" ? (
             <p className="hover:text-green-700 transition-colors duration-300">{children}</p>
           ) : (
-            <ul className="list-disc pl-6 space-y-2">
+            <ul className="list-disc pl-5 sm:pl-6 space-y-1 sm:space-y-2">
               {React.Children.map(children, (child, idx) => (
                 <motion.li
                   key={idx}
-                  className="hover:text-green-700 hover:font-medium transition-all duration-300"
+                  className="hover:text-green-700 transition-colors duration-300"
                   whileHover={!isMobile ? {
-                    x: 5,
-                    scale: 1.02
+                    x: 3,
+                    scale: 1.01
                   } : undefined}
+                  style={{ transform: 'translateZ(0)' }}
                 >
                   {child}
                 </motion.li>
@@ -234,66 +289,152 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
             </ul>
           )}
         </motion.div>
-        
-        {/* Animated Underline on Hover */}
-        {!isMobile && (
-          <motion.div
-            className="absolute bottom-4 left-6 right-6 h-0.5"
-            animate={isHovered ? {
-              background: "linear-gradient(90deg, #10B981, #34D399, #22C55E)",
-              scaleX: 1
-            } : {
-              background: "transparent",
-              scaleX: 0
-            }}
-            transition={{ duration: 0.3 }}
-            style={{ originX: 0 }}
-          />
-        )}
       </div>
     </motion.div>
   );
 });
+
+Section.displayName = 'Section';
+
+// Optimized Ripple Effect
+const RippleEffect = React.memo(({ ripple }) => {
+  const [shouldRender, setShouldRender] = useState(true);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setShouldRender(false), ripple.isMobile ? 800 : 1000);
+    return () => clearTimeout(timer);
+  }, [ripple.isMobile]);
+  
+  if (!shouldRender) return null;
+  
+  if (ripple.type === 'sparkle') {
+    return (
+      <motion.div
+        className="absolute pointer-events-none will-change-transform gpu-accelerated"
+        initial={{
+          x: ripple.x - (ripple.isMobile ? 8 : 10),
+          y: ripple.y - (ripple.isMobile ? 8 : 10),
+          scale: 0,
+          opacity: 0,
+          rotate: 0
+        }}
+        animate={{
+          scale: [0, 1.5, 0],
+          opacity: [0, 1, 0],
+          rotate: [0, 180],
+          y: [ripple.y - (ripple.isMobile ? 8 : 10), ripple.y - (ripple.isMobile ? 25 : 35)]
+        }}
+        transition={{ duration: ripple.isMobile ? 0.6 : 0.8 }}
+        style={{
+          width: ripple.isMobile ? '16px' : '20px',
+          height: ripple.isMobile ? '16px' : '20px',
+          background: `radial-gradient(circle, ${ripple.color}, transparent 70%)`,
+          borderRadius: '50%',
+          transform: 'translateZ(0)'
+        }}
+      />
+    );
+  }
+  
+  return (
+    <motion.div
+      className="absolute pointer-events-none rounded-full will-change-transform gpu-accelerated"
+      initial={{
+        scale: 0,
+        opacity: 0.7,
+        x: ripple.x - (ripple.isMobile ? 15 : 20),
+        y: ripple.y - (ripple.isMobile ? 15 : 20),
+      }}
+      animate={{
+        scale: ripple.isMobile ? 3.5 : 5,
+        opacity: 0,
+      }}
+      transition={{
+        duration: ripple.isMobile ? 0.9 : 1.2,
+        ease: "easeOut"
+      }}
+      style={{
+        width: ripple.isMobile ? 30 : 40,
+        height: ripple.isMobile ? 30 : 40,
+        background: `radial-gradient(circle, ${ripple.color}, transparent 70%)`,
+        filter: `blur(${ripple.isMobile ? 8 : 12}px)`,
+        mixBlendMode: "screen",
+        transform: 'translateZ(0)',
+      }}
+    />
+  );
+});
+
+RippleEffect.displayName = 'RippleEffect';
+
+// Optimized AnimatePresence Wrapper
+const OptimizedAnimatePresence = React.memo(({ children, isMobile }) => (
+  <AnimatePresence mode="wait">
+    {React.Children.map(children, child => 
+      React.isValidElement(child) ? React.cloneElement(child, { isMobile }) : child
+    )}
+  </AnimatePresence>
+));
+
+OptimizedAnimatePresence.displayName = 'OptimizedAnimatePresence';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 }
 };
 
-export default function PrivacyPolicy() {
+const PrivacyPolicy = () => {
+  usePerformanceMonitor();
+  
   const containerRef = useRef(null);
   const [ripples, setRipples] = useState([]);
   const [hoverGlow, setHoverGlow] = useState({ x: 0, y: 0, active: false });
   const [isMobile, setIsMobile] = useState(false);
   const [touchPosition, setTouchPosition] = useState({ x: 0, y: 0 });
   const [cardHover, setCardHover] = useState(false);
+  
+  // Refs for performance optimization
+  const animationFrameRef = useRef(null);
+  const lastInteractionTime = useRef(0);
+  const interactionThrottleDelay = useRef(150); // ms between interactions
+  const lastResizeTime = useRef(0);
+  const lastSparkleTime = useRef(0);
 
-  // Mobile detection
+  // Optimized mobile detection with throttling
   useEffect(() => {
-    let timeoutId;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    const handleResize = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(checkMobile, 100);
+      const mobile = window.innerWidth < 768;
+      
+      if (mobile !== isMobile) {
+        setIsMobile(mobile);
+      }
     };
     
     checkMobile();
-    window.addEventListener('resize', handleResize);
+    
+    const handleResize = () => {
+      const now = Date.now();
+      if (now - lastResizeTime.current > 200) {
+        lastResizeTime.current = now;
+        checkMobile();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize, { passive: true });
     
     return () => {
       window.removeEventListener('resize', handleResize);
-      clearTimeout(timeoutId);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, []);
+  }, [isMobile]);
 
-  // Enhanced mouse tracking with HOVER EFFECTS
+  // Enhanced mouse tracking
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Scroll animations
+  // Optimized scroll animations
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
@@ -301,19 +442,25 @@ export default function PrivacyPolicy() {
   
   const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, isMobile ? 0.98 : 0.95]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, isMobile ? 0.9 : 0.8]);
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, isMobile ? -30 : -60]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, isMobile ? -20 : -40]);
   
   const contentYSpring = useSpring(contentY, { 
     stiffness: isMobile ? 150 : 180, 
-    damping: isMobile ? 32 : 28 
+    damping: isMobile ? 32 : 28,
+    mass: 0.5
   });
   const heroScaleSpring = useSpring(heroScale, { 
     stiffness: isMobile ? 180 : 200, 
-    damping: isMobile ? 40 : 35 
+    damping: isMobile ? 40 : 35,
+    mass: 0.5
   });
 
-  // Enhanced ripple effect handler
+  // Optimized ripple effect handler with throttling
   const handleInteraction = useCallback((e) => {
+    const now = Date.now();
+    if (now - lastInteractionTime.current < interactionThrottleDelay.current) return;
+    lastInteractionTime.current = now;
+    
     if (
       e.target.tagName === 'INPUT' ||
       e.target.tagName === 'TEXTAREA' ||
@@ -359,147 +506,231 @@ export default function PrivacyPolicy() {
       isMobile
     };
 
-    setRipples(prev => [...prev, newRipple]);
+    setRipples(prev => {
+      const newRipples = [...prev, newRipple];
+      return newRipples.slice(-(isMobile ? 4 : 6));
+    });
 
     setTimeout(() => {
       setRipples(prev => prev.filter(r => r.id !== newRipple.id));
     }, isMobile ? 900 : 1200);
   }, [isMobile]);
 
-  // Enhanced move handler with HOVER EFFECTS
+  // Optimized move handler with requestAnimationFrame
   const handleMove = useCallback((e) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    let clientX, clientY;
-    if (e.type.includes('touch')) {
-      const touch = e.touches[0];
-      if (!touch) return;
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
 
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    
-    setTouchPosition({ x, y });
-    
-    if (!isMobile) {
-      setHoverGlow({ x, y, active: true });
-    }
+    animationFrameRef.current = requestAnimationFrame(() => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      let clientX, clientY;
+      if (e.type.includes('touch')) {
+        const touch = e.touches?.[0];
+        if (!touch) return;
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      
+      setTouchPosition({ x, y });
+      
+      if (!isMobile) {
+        setHoverGlow({ x, y, active: true });
+        
+        // Create sparkles on mouse move occasionally
+        const now = Date.now();
+        if (now - lastSparkleTime.current > 300 && Math.random() > 0.8) {
+          lastSparkleTime.current = now;
+          const colors = ['#10B981', '#34D399', '#22C55E'];
+          const sparkle = {
+            id: Date.now(),
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            type: 'sparkle',
+            isMobile: false
+          };
+          
+          setRipples(prev => [...prev.slice(-8), sparkle]);
+          
+          setTimeout(() => {
+            setRipples(prev => prev.filter(r => r.id !== sparkle.id));
+          }, 600);
+        }
+      }
+    });
   }, [isMobile]);
 
-  // Enhanced mouse effects with HOVER EFFECTS
+  // Optimized mouse effects for desktop
   useEffect(() => {
     if (isMobile) return;
 
+    let isCancelled = false;
+
     const onMove = (e) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
+      if (isCancelled) return;
       
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      
-      mouseX.set(nx);
-      mouseY.set(ny);
-      
-      // Create sparkles on mouse move occasionally
-      if (Math.random() > 0.9) {
-        const colors = ['#10B981', '#34D399', '#22C55E'];
-        const sparkle = {
-          id: Date.now(),
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          type: 'sparkle',
-          isMobile: false
-        };
-        
-        setRipples(prev => [...prev.slice(-10), sparkle]);
-        
-        setTimeout(() => {
-          setRipples(prev => prev.filter(r => r.id !== sparkle.id));
-        }, 600);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
+      
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect || isCancelled) return;
+        
+        const nx = (e.clientX - rect.left) / rect.width - 0.5;
+        const ny = (e.clientY - rect.top) / rect.height - 0.5;
+        
+        mouseX.set(nx);
+        mouseY.set(ny);
+      });
     };
 
     const onLeave = () => {
-      animate(mouseX, 0, { type: "spring", stiffness: 100, damping: 15 });
-      animate(mouseY, 0, { type: "spring", stiffness: 100, damping: 15 });
+      animate(mouseX, 0, { 
+        type: "spring", 
+        stiffness: 100, 
+        damping: 15,
+        mass: 0.3 
+      });
+      animate(mouseY, 0, { 
+        type: "spring", 
+        stiffness: 100, 
+        damping: 15,
+        mass: 0.3 
+      });
       setHoverGlow(prev => ({ ...prev, active: false }));
     };
 
     const node = containerRef.current;
     if (node) {
-      node.addEventListener("pointermove", onMove);
+      node.addEventListener("pointermove", onMove, { passive: true });
       node.addEventListener("pointerleave", onLeave);
     }
     
     return () => {
+      isCancelled = true;
       if (node) {
         node.removeEventListener("pointermove", onMove);
         node.removeEventListener("pointerleave", onLeave);
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [isMobile, mouseX, mouseY]);
 
-  // Particle Background with HOVER INTERACTIVITY
-  const particleOptions = {
+  // Optimized Particle options with slim loader
+  const particleOptions = useMemo(() => ({
+    fpsLimit: isMobile ? 30 : 60,
     particles: {
       number: { 
-        value: isMobile ? 50 : 80, 
+        value: isMobile ? 35 : 50,
         density: { 
           enable: true, 
-          value_area: isMobile ? 600 : 800 
+          value_area: isMobile ? 500 : 700 
         } 
       },
-      color: { value: ["#22c55e", "#10b981", "#34d399", "#059669"] },
-      shape: { type: "circle" },
+      color: { 
+        value: ["#22c55e", "#10b981", "#34d399", "#059669"] 
+      },
+      shape: { 
+        type: "circle" 
+      },
       opacity: { 
-        value: isMobile ? 0.15 : 0.2, 
-        random: true, 
-        animation: { 
-          enable: true, 
-          speed: 1, 
-          minimumValue: 0.1 
-        } 
+        value: isMobile ? 0.12 : 0.15,
+        random: true,
+        animation: {
+          enable: true,
+          speed: 0.5,
+          minimumValue: 0.05
+        }
       },
       size: { 
-        value: isMobile ? 2.5 : 3, 
-        random: true, 
-        animation: { 
-          enable: true, 
-          speed: 2, 
-          minimumValue: 1 
-        } 
+        value: isMobile ? 2 : 2.5,
+        random: true,
+        animation: {
+          enable: isMobile ? false : true,
+          speed: 2,
+          minimumValue: 1
+        }
       },
       move: {
         enable: true,
-        speed: isMobile ? 0.4 : 0.5,
+        speed: isMobile ? 0.3 : 0.4,
         direction: "none",
         random: true,
         straight: false,
         outMode: "bounce",
-        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+      },
+      collisions: {
+        enable: false
       }
     },
     interactivity: {
       events: {
         onhover: { 
           enable: !isMobile, 
-          mode: "grab",
-          parallax: { enable: true, force: 60, smooth: 10 }
+          mode: "repulse",
+          parallax: { enable: false }
         },
-        onclick: { enable: true, mode: "push" }
+        onclick: { 
+          enable: true, 
+          mode: "push" 
+        }
+      },
+      modes: {
+        repulse: {
+          distance: isMobile ? 40 : 60,
+          duration: 0.4
+        },
+        push: {
+          quantity: 2
+        }
       }
     },
-    detectRetina: true
-  };
+    detectRetina: true,
+    background: {
+      color: "transparent"
+    }
+  }), [isMobile]);
 
-  const sections = [
+  // Event handlers with passive listeners
+  const handleContainerClick = useCallback((e) => {
+    handleInteraction(e);
+  }, [handleInteraction]);
+
+  const handleContainerTouchStart = useCallback((e) => {
+    e.preventDefault();
+    handleInteraction(e);
+  }, [handleInteraction]);
+
+  const handleContainerTouchMove = useCallback((e) => {
+    e.preventDefault();
+    handleMove(e);
+  }, [handleMove]);
+
+  const handleContainerMouseMove = useCallback((e) => {
+    if (!isMobile) handleMove(e);
+  }, [handleMove, isMobile]);
+
+  const handleContainerMouseLeave = useCallback(() => {
+    if (!isMobile) setHoverGlow(prev => ({ ...prev, active: false }));
+  }, [isMobile]);
+
+  const handleContainerTouchEnd = useCallback(() => {
+    if (isMobile) setHoverGlow(prev => ({ ...prev, active: false }));
+  }, [isMobile]);
+
+  const sections = useMemo(() => [
     {
       title: "Information we collect",
       content: [
@@ -530,193 +761,134 @@ export default function PrivacyPolicy() {
     },
     {
       title: "Contact",
-      content: "For privacy inquiries, contact us via the Contact page or email: support@purescan.example"
+      content: "For privacy inquiries, contact us via the Contact page or email: purescan.helpdesk@gmail.com"
     }
-  ];
+  ], []);
+
+  // Cleanup ripples efficiently
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setRipples(prev => prev.filter(r => now - r.id < 1000));
+    }, 500);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   return (
     <div 
       ref={containerRef}
-      onClick={handleInteraction}
-      onTouchStart={handleInteraction}
-      onTouchMove={handleMove}
-      onMouseMove={!isMobile ? handleMove : undefined}
-      onMouseLeave={() => !isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      onTouchEnd={() => isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      className="relative min-h-screen flex flex-col bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default px-4"
+      onClick={handleContainerClick}
+      onTouchStart={handleContainerTouchStart}
+      onTouchMove={handleContainerTouchMove}
+      onMouseMove={handleContainerMouseMove}
+      onMouseLeave={handleContainerMouseLeave}
+      onTouchEnd={handleContainerTouchEnd}
+      className="relative min-h-screen flex flex-col bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default px-4 sm:px-6 performance-optimized"
       style={{
         WebkitTapHighlightColor: 'transparent',
-        touchAction: 'pan-y'
+        touchAction: 'pan-y',
+        overscrollBehavior: 'none'
       }}
     >
       {/* Interactive Background Layer */}
       <InteractiveBackground isMobile={isMobile} />
       
-      {/* Enhanced Particle Background with HOVER EFFECTS */}
+      {/* Optimized Particle Background with Slim */}
       <Particles
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 -z-10 gpu-accelerated"
+        init={async (engine) => {
+          await loadSlim(engine);
+        }}
         options={particleOptions}
+        key={`particles-${isMobile}`}
       />
 
-      {/* Enhanced Ripple Effects */}
+      {/* Ripple Effects Container */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
-        <AnimatePresence>
+        <OptimizedAnimatePresence isMobile={isMobile}>
           {ripples.map(ripple => (
-            ripple.type === 'ripple' ? (
-              <motion.div
-                key={ripple.id}
-                className="absolute pointer-events-none rounded-full"
-                initial={{
-                  scale: 0,
-                  opacity: 0.7,
-                  x: ripple.x - (ripple.isMobile ? 15 : 20),
-                  y: ripple.y - (ripple.isMobile ? 15 : 20),
-                  width: ripple.isMobile ? 30 : 40,
-                  height: ripple.isMobile ? 30 : 40,
-                  background: `radial-gradient(circle, ${ripple.color}, ${ripple.color.replace('0.6', '0.2')})`
-                }}
-                animate={{
-                  scale: [0, ripple.isMobile ? 3 : 4, ripple.isMobile ? 3.5 : 5],
-                  opacity: [0.7, 0.3, 0],
-                  width: [
-                    ripple.isMobile ? 30 : 40, 
-                    ripple.isMobile ? 120 : 160, 
-                    ripple.isMobile ? 140 : 200
-                  ],
-                  height: [
-                    ripple.isMobile ? 30 : 40, 
-                    ripple.isMobile ? 120 : 160, 
-                    ripple.isMobile ? 140 : 200
-                  ],
-                  x: [
-                    ripple.x - (ripple.isMobile ? 15 : 20), 
-                    ripple.x - (ripple.isMobile ? 60 : 80), 
-                    ripple.x - (ripple.isMobile ? 70 : 100)
-                  ],
-                  y: [
-                    ripple.y - (ripple.isMobile ? 15 : 20), 
-                    ripple.y - (ripple.isMobile ? 60 : 80), 
-                    ripple.y - (ripple.isMobile ? 70 : 100)
-                  ]
-                }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: ripple.isMobile ? 0.9 : 1.2,
-                  ease: "easeOut"
-                }}
-                style={{
-                  filter: `blur(${ripple.isMobile ? 8 : 12}px)`,
-                  mixBlendMode: "screen"
-                }}
-              />
-            ) : (
-              <motion.div
-                key={ripple.id}
-                className="absolute pointer-events-none"
-                initial={{
-                  x: ripple.x - (ripple.isMobile ? 8 : 10),
-                  y: ripple.y - (ripple.isMobile ? 8 : 10),
-                  scale: 0,
-                  opacity: 0,
-                  rotate: 0
-                }}
-                animate={{
-                  scale: [0, 1.5, 0],
-                  opacity: [0, 1, 0],
-                  rotate: [0, 180],
-                  y: [ripple.y - (ripple.isMobile ? 8 : 10), ripple.y - (ripple.isMobile ? 30 : 40)]
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: ripple.isMobile ? 0.6 : 0.8 }}
-                style={{
-                  width: ripple.isMobile ? '16px' : '20px',
-                  height: ripple.isMobile ? '16px' : '20px',
-                  background: `radial-gradient(circle, ${ripple.color}, transparent 70%)`,
-                  borderRadius: '50%'
-                }}
-              />
-            )
+            <RippleEffect key={ripple.id} ripple={ripple} />
           ))}
-        </AnimatePresence>
+        </OptimizedAnimatePresence>
 
-        {/* Enhanced Hover Glow with ANIMATION */}
+        {/* Hover Glow (Desktop only) */}
         {!isMobile && (
           <motion.div
-            className="absolute pointer-events-none rounded-full"
+            className="absolute pointer-events-none rounded-full will-change-transform"
             animate={{
-              scale: hoverGlow.active ? [1, 1.1, 1] : 0,
-              opacity: hoverGlow.active ? [0.2, 0.3, 0.2] : 0,
-              x: hoverGlow.x - 75,
-              y: hoverGlow.y - 75
+              scale: hoverGlow.active ? 1 : 0,
+              opacity: hoverGlow.active ? 0.2 : 0,
+              x: hoverGlow.x - 60,
+              y: hoverGlow.y - 60
             }}
             transition={{
-              scale: { duration: 2, repeat: Infinity },
-              opacity: { duration: 2, repeat: Infinity }
+              type: "spring",
+              stiffness: 150,
+              damping: 20,
+              mass: 0.2
             }}
             style={{
-              width: 150,
-              height: 150,
-              background: "radial-gradient(circle, rgba(34,197,94,0.4), rgba(16,185,129,0.15), transparent 70%)",
-              filter: "blur(20px)"
+              width: 120,
+              height: 120,
+              background: "radial-gradient(circle, rgba(34,197,94,0.3), rgba(16,185,129,0.1), transparent 70%)",
+              filter: "blur(15px)",
+              transform: 'translateZ(0)'
             }}
           />
         )}
 
-        {/* Touch/Mouse Trail Effect with HOVER ANIMATION */}
+        {/* Touch/Mouse Trail Effect */}
         <motion.div
-          className="absolute pointer-events-none rounded-full"
+          className="absolute pointer-events-none rounded-full gpu-accelerated"
           animate={{
             x: touchPosition.x - (isMobile ? 6 : 8),
             y: touchPosition.y - (isMobile ? 6 : 8),
-            scale: hoverGlow.active ? [1, 1.2, 1] : 1
+            opacity: touchPosition.x === 0 && touchPosition.y === 0 ? 0 : 0.3,
           }}
           transition={{
-            x: { type: "spring", stiffness: isMobile ? 600 : 500, damping: isMobile ? 35 : 30 },
-            y: { type: "spring", stiffness: isMobile ? 600 : 500, damping: isMobile ? 35 : 30 },
-            scale: { duration: 0.8, repeat: Infinity }
+            type: "spring",
+            stiffness: isMobile ? 800 : 600,
+            damping: isMobile ? 40 : 30,
+            mass: 0.5
           }}
           style={{
             width: isMobile ? 12 : 16,
             height: isMobile ? 12 : 16,
-            background: "radial-gradient(circle, rgba(34,197,94,0.2), rgba(16,185,129,0.05))",
-            border: `2px solid rgba(34,197,94,${isMobile ? 0.2 : 0.3})`,
-            filter: 'blur(1px)'
+            background: `radial-gradient(circle, rgba(34,197,94,0.2), transparent 70%)`,
+            border: `1px solid rgba(34,197,94,0.15)`,
+            boxShadow: '0 0 8px rgba(34,197,94,0.1)',
+            transform: 'translateZ(0)'
           }}
         />
       </div>
 
-      {/* Enhanced Background Orbs with HOVER EFFECTS */}
+      {/* Background Orbs */}
       {!isMobile && (
         <>
           <motion.div
-            className="absolute -top-60 -left-60 w-[45rem] h-[45rem] rounded-full pointer-events-none"
+            className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full pointer-events-none gpu-accelerated"
             initial={{ opacity: 0 }}
             animate={{ 
-              opacity: 0.2,
-              scale: [1, 1.15, 1],
-              rotate: [0, 5, 0]
+              opacity: 0.12,
+              scale: [1, 1.05, 1],
             }}
             transition={{ 
               duration: 8, 
               repeat: Infinity, 
               ease: "easeInOut" 
             }}
-            whileHover={{
-              opacity: 0.3,
-              scale: 1.2,
-              transition: { duration: 0.5 }
-            }}
+            style={{ transform: 'translateZ(0)' }}
           >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-green-400 via-emerald-400 to-teal-300 blur-[140px]" />
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300/40 via-emerald-300/30 to-teal-200/30 blur-[80px]" />
           </motion.div>
 
           <motion.div
-            className="absolute -right-40 -bottom-40 w-[35rem] h-[35rem] rounded-full pointer-events-none"
+            className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none gpu-accelerated"
             initial={{ opacity: 0 }}
             animate={{ 
-              opacity: 0.2,
-              scale: [1, 1.12, 1],
-              rotate: [0, -5, 0]
+              opacity: 0.1,
+              scale: [1, 1.03, 1],
             }}
             transition={{ 
               duration: 7, 
@@ -724,46 +896,12 @@ export default function PrivacyPolicy() {
               ease: "easeInOut",
               delay: 0.5
             }}
-            whileHover={{
-              opacity: 0.3,
-              scale: 1.15,
-              transition: { duration: 0.5 }
-            }}
+            style={{ transform: 'translateZ(0)' }}
           >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-300 via-emerald-300 to-green-400 blur-[140px]" />
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200/30 via-emerald-200/20 to-green-300/20 blur-[60px]" />
           </motion.div>
         </>
       )}
-
-      {/* Animated Background Shapes with HOVER EFFECTS */}
-      {[1, 2, 3].map((i) => (
-        <motion.div
-          key={i}
-          className={`absolute rounded-full -z-10 ${
-            i === 1 ? `w-${isMobile ? 10 : 16} h-${isMobile ? 10 : 16} bg-green-400/20 ${isMobile ? 'top-16 left-6' : 'top-1/4 left-1/6'}` :
-            i === 2 ? `w-${isMobile ? 12 : 20} h-${isMobile ? 12 : 20} bg-emerald-400/15 ${isMobile ? 'bottom-32 right-8' : 'bottom-1/3 right-1/4'}` :
-            `w-${isMobile ? 8 : 12} h-${isMobile ? 8 : 12} bg-teal-400/25 ${isMobile ? 'top-1/3 right-1/4' : 'top-1/3 right-1/3'}`
-          }`}
-          animate={{
-            y: [0, isMobile ? -20 : -40, 0],
-            x: [0, isMobile ? 10 : 20, 0],
-            opacity: [0.2, 0.35, 0.2],
-            scale: [1, isMobile ? 1.1 : 1.2, 1],
-            rotate: [0, 180, 360]
-          }}
-          transition={{
-            duration: isMobile ? 12 + i * 2 : 15 + i * 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.5
-          }}
-          whileHover={!isMobile ? {
-            scale: 1.8,
-            opacity: 0.6,
-            transition: { duration: 0.4 }
-          } : undefined}
-        />
-      ))}
 
       {/* Main Content */}
       <div className="relative z-10 flex-grow py-8 sm:py-12">
@@ -775,29 +913,29 @@ export default function PrivacyPolicy() {
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-gray-900 px-4 sm:px-6 lg:px-8"
+          transition={{ duration: 0.6 }}
+          className="text-gray-900"
           onMouseEnter={() => !isMobile && setCardHover(true)}
           onMouseLeave={() => !isMobile && setCardHover(false)}
         >
-          {/* Hero Section with HOVER EFFECTS */}
+          {/* Hero Section */}
           <motion.section
             variants={fadeUp}
             initial="hidden"
             animate="visible"
             transition={{ duration: 0.8 }}
-            className="max-w-4xl mx-auto mb-12 sm:mb-16 relative"
+            className="max-w-4xl mx-auto mb-8 sm:mb-12 relative"
           >
-            {/* Hero Background Glow with HOVER ANIMATION */}
+            {/* Hero Background Glow */}
             {!isMobile && (
               <motion.div
                 className="absolute inset-0 -z-10 rounded-3xl"
                 animate={cardHover ? {
                   opacity: [0.15, 0.25, 0.15],
-                  scale: [1, 1.1, 1]
+                  scale: [1, 1.05, 1]
                 } : {
                   opacity: [0.1, 0.2, 0.1],
-                  scale: [1, 1.05, 1]
+                  scale: [1, 1.02, 1]
                 }}
                 transition={{
                   duration: 4,
@@ -806,7 +944,8 @@ export default function PrivacyPolicy() {
                 }}
                 style={{
                   background: "radial-gradient(circle at center, rgba(34,197,94,0.15), transparent 70%)",
-                  filter: "blur(40px)"
+                  filter: "blur(40px)",
+                  transform: 'translateZ(0)'
                 }}
               />
             )}
@@ -814,7 +953,7 @@ export default function PrivacyPolicy() {
             <motion.div
               className="text-center"
               whileHover={!isMobile ? { 
-                scale: 1.02,
+                scale: 1.01,
                 transition: { duration: 0.3 }
               } : undefined}
             >
@@ -827,50 +966,37 @@ export default function PrivacyPolicy() {
                   repeat: Infinity,
                   ease: "linear"
                 }}
-                whileHover={!isMobile ? {
-                  scale: 1.03,
-                  textShadow: "0px 0px 20px rgba(16,185,129,0.5)"
-                } : undefined}
-                className={`font-bold tracking-tight ${isMobile ? 'text-3xl' : 'text-4xl sm:text-5xl'} mb-6`}
+                className={`font-bold tracking-tight ${isMobile ? 'text-3xl' : 'text-4xl sm:text-5xl'} mb-4 sm:mb-6 will-change-transform`}
                 style={{
                   background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
                   backgroundSize: '300% 300%',
                   WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  color: 'transparent'
+                  transform: 'translateZ(0)'
                 }}
               >
                 Privacy Policy
               </motion.h1>
               
-              {/* Animated Underline with HOVER EFFECT */}
+              {/* Animated Underline */}
               <motion.div
-                className={`bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-8 ${isMobile ? 'h-0.5' : 'h-1'}`}
+                className={`bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-6 sm:mb-8 ${isMobile ? 'h-0.5' : 'h-1'}`}
                 initial={{ width: 0 }}
                 animate={{ width: "200px" }}
                 transition={{ duration: 1.5, delay: 0.5 }}
-                whileHover={!isMobile ? { 
-                  scaleY: 2,
-                  width: "250px"
-                } : undefined}
               />
               
               <motion.p
                 animate={{ 
                   opacity: [0.9, 1, 0.9],
-                  y: [0, -2, 0]
                 }}
                 transition={{ 
                   duration: 4, 
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                whileHover={!isMobile ? { 
-                  scale: 1.03,
-                  color: "#065f46",
-                  x: 5
-                } : undefined}
-                className={`text-gray-700 max-w-2xl mx-auto leading-relaxed ${isMobile ? 'text-base' : 'text-xl'}`}
+                className={`text-gray-700 max-w-2xl mx-auto leading-relaxed ${isMobile ? 'text-base' : 'text-lg sm:text-xl'}`}
               >
                 We value your privacy. This policy explains what data we collect, 
                 how we use it, and your rights.
@@ -885,7 +1011,7 @@ export default function PrivacyPolicy() {
             viewport={{ 
               once: true,
               amount: isMobile ? 0.1 : 0.3,
-              margin: isMobile ? "0px" : "-100px"
+              margin: isMobile ? "0px" : "-50px"
             }}
             variants={{ 
               hidden: { opacity: 0 },
@@ -914,38 +1040,39 @@ export default function PrivacyPolicy() {
             ))}
           </motion.div>
 
-          {/* Back to Home Button with ENHANCED HOVER EFFECTS */}
+          {/* Back to Home Button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="text-center mt-12 sm:mt-16"
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-center mt-8 sm:mt-12"
           >
             <motion.div
-              whileHover={!isMobile ? { scale: 1.05 } : undefined}
-              whileTap={{ scale: 0.95 }}
+              whileHover={!isMobile ? { scale: 1.03 } : undefined}
+              whileTap={{ scale: 0.97 }}
               className="relative inline-block"
             >
               <Link
                 to="/"
-                className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full font-semibold hover:shadow-3xl transition-all duration-300 overflow-hidden px-10 py-4 shadow-2xl"
+                className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full font-semibold hover:shadow-xl transition-all duration-300 overflow-hidden px-8 py-3 sm:px-10 sm:py-4 shadow-lg will-change-transform"
+                style={{ transform: 'translateZ(0)' }}
               >
                 <motion.span
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="text-2xl"
+                  className="text-xl sm:text-2xl"
                 >
                   ←
                 </motion.span>
-                <span className="relative z-10">Back to Home</span>
+                <span className="relative z-10 text-sm sm:text-base">Back to Home</span>
                 
-                {/* Button Glow Effect on Hover */}
+                {/* Button Glow Effect */}
                 <motion.div
                   className="absolute inset-0 rounded-full"
                   animate={{
-                    opacity: [0.2, 0.4, 0.2],
-                    scale: [1, 1.1, 1]
+                    opacity: [0.2, 0.3, 0.2],
+                    scale: [1, 1.05, 1]
                   }}
                   transition={{
                     duration: 3,
@@ -953,32 +1080,11 @@ export default function PrivacyPolicy() {
                     ease: "easeInOut"
                   }}
                   style={{
-                    background: "radial-gradient(circle, rgba(255,255,255,0.3), transparent 70%)",
-                    filter: `blur(${isMobile ? 8 : 10}px)`
+                    background: "radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%)",
+                    filter: `blur(${isMobile ? 8 : 10}px)`,
+                    transform: 'translateZ(0)'
                   }}
                 />
-                
-                {/* Animated Border on Hover */}
-                {!isMobile && (
-                  <motion.div
-                    className="absolute inset-0 rounded-full"
-                    animate={{
-                      borderColor: ['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.3)'],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    style={{
-                      border: '2px solid',
-                      margin: '-2px'
-                    }}
-                  />
-                )}
-                
-                {/* Hover Overlay Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-emerald-500/20 to-green-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
               </Link>
             </motion.div>
           </motion.div>
@@ -986,4 +1092,6 @@ export default function PrivacyPolicy() {
       </div>
     </div>
   );
-}
+};
+
+export default PrivacyPolicy;

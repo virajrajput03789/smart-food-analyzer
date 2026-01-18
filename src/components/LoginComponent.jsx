@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback} from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from './FireBase';
@@ -13,33 +13,35 @@ import {
 } from 'framer-motion';
 import Particles from 'react-tsparticles';
 
-const originalConsole = { ...console };
-
-// Ignore only COOP warnings
-console.warn = (msg, ...args) => {
-  if (!msg.includes('Cross-Origin-Opener-Policy')) {
-    originalConsole.warn(msg, ...args);
-  }
+// Static console override to prevent re-creation
+const ORIGINAL_CONSOLE = { ...console };
+const CONSOLE_OVERRIDE = {
+  warn: (msg, ...args) => {
+    if (!msg.includes('Cross-Origin-Opener-Policy')) {
+      ORIGINAL_CONSOLE.warn(msg, ...args);
+    }
+  },
+  log: (...args) => ORIGINAL_CONSOLE.log(...args),
+  error: (...args) => ORIGINAL_CONSOLE.error(...args)
 };
 
+// Apply console overrides once on mount
+let consoleApplied = false;
+
 // Optimized Micro Interaction Component
-const MicroInteraction = ({ type, x, y, color, isMobile }) => {
+const MicroInteraction = memo(({ type, x, y, color, isMobile }) => {
   if (type === 'sparkle') {
     return (
-      <motion.div
+      <div
         className="absolute pointer-events-none"
-        initial={{ x, y, scale: 0, opacity: 0 }}
-        animate={{
-          scale: [0, 1.2, 0],
-          opacity: [0, 1, 0],
-          rotate: [0, 180]
-        }}
-        transition={{ duration: isMobile ? 0.4 : 0.6 }}
         style={{
           width: isMobile ? '16px' : '20px',
           height: isMobile ? '16px' : '20px',
+          left: x,
+          top: y,
           background: `radial-gradient(circle, ${color}60, transparent 70%)`,
-          borderRadius: '50%'
+          borderRadius: '50%',
+          transformOrigin: 'center'
         }}
       />
     );
@@ -47,17 +49,13 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
   
   if (type === 'pulse') {
     return (
-      <motion.div
+      <div
         className="absolute pointer-events-none rounded-full"
-        initial={{ x: x - (isMobile ? 10 : 15), y: y - (isMobile ? 10 : 15), scale: 0, opacity: 0.7 }}
-        animate={{
-          scale: [0, 1.5],
-          opacity: [0.7, 0]
-        }}
-        transition={{ duration: isMobile ? 0.6 : 0.8 }}
         style={{
           width: isMobile ? '24px' : '30px',
           height: isMobile ? '24px' : '30px',
+          left: x - (isMobile ? 12 : 15),
+          top: y - (isMobile ? 12 : 15),
           background: color,
           filter: 'blur(4px)'
         }}
@@ -66,125 +64,134 @@ const MicroInteraction = ({ type, x, y, color, isMobile }) => {
   }
   
   return null;
-};
+});
+
+MicroInteraction.displayName = 'MicroInteraction';
 
 // Optimized Interactive Background
-const InteractiveBackground = React.memo(({ isMobile }) => {
+const InteractiveBackground = memo(({ isMobile }) => {
   const [interactions, setInteractions] = useState([]);
-  
+  const interactionsRef = useRef([]);
+  const intervalRef = useRef(null);
+  const cleanupRef = useRef(null);
+
+  // Optimized interaction creation with throttling
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7 && interactions.length < (isMobile ? 4 : 8)) {
+    const createInteraction = () => {
+      if (Math.random() > 0.7 && interactionsRef.current.length < (isMobile ? 4 : 8)) {
         const type = Math.random() > 0.5 ? 'sparkle' : 'pulse';
         const colors = ['#10B981', '#34D399', '#22C55E', '#059669'];
-        setInteractions(prev => [...prev.slice(-(isMobile ? 3 : 5)), {
+        const newInteraction = {
           id: Date.now(),
           type,
-          x: Math.random() * 100 + '%',
-          y: Math.random() * 100 + '%',
+          x: `${Math.random() * 100}%`,
+          y: `${Math.random() * 100}%`,
           color: colors[Math.floor(Math.random() * colors.length)]
-        }]);
+        };
+        
+        setInteractions(prev => {
+          const newList = [...prev.slice(-(isMobile ? 3 : 5)), newInteraction];
+          interactionsRef.current = newList;
+          return newList;
+        });
+
+        // Auto-remove after animation
+        setTimeout(() => {
+          setInteractions(prev => {
+            const filtered = prev.filter(int => int.id !== newInteraction.id);
+            interactionsRef.current = filtered;
+            return filtered;
+          });
+        }, isMobile ? 1800 : 2000);
       }
-    }, isMobile ? 1200 : 800);
+    };
+
+    intervalRef.current = setInterval(createInteraction, isMobile ? 1200 : 800);
     
-    return () => clearInterval(interval);
-  }, [interactions.length, isMobile]);
-  
-  // Cleanup old interactions
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isMobile]);
+
+  // Cleanup effect
   useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      setInteractions(prev => prev.filter(int => Date.now() - int.id < 2000));
+    cleanupRef.current = setInterval(() => {
+      const now = Date.now();
+      setInteractions(prev => {
+        const filtered = prev.filter(int => now - int.id < 2000);
+        interactionsRef.current = filtered;
+        return filtered;
+      });
     }, 1000);
     
-    return () => clearInterval(cleanupInterval);
+    return () => {
+      if (cleanupRef.current) clearInterval(cleanupRef.current);
+    };
   }, []);
-  
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <AnimatePresence>
-        {interactions.map(interaction => (
-          <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
-        ))}
-      </AnimatePresence>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden will-change-transform">
+      {interactions.map(interaction => (
+        <MicroInteraction key={interaction.id} {...interaction} isMobile={isMobile} />
+      ))}
     </div>
   );
 });
 
+InteractiveBackground.displayName = 'InteractiveBackground';
+
 // Optimized Floating Icon Component
-const FloatingIcon = React.memo(({ icon, color, initialX, initialY, delay, isMobile }) => (
-  <motion.div
-    className="absolute pointer-events-none"
-    initial={{ x: initialX, y: initialY, scale: 0, opacity: 0 }}
-    animate={{
-      scale: [0, 1, 1, 0],
-      opacity: [0, 1, 1, 0],
-      y: [initialY, initialY - (isMobile ? 60 : 100)],
-      rotate: [0, 360]
-    }}
-    transition={{
-      duration: isMobile ? 3 : 4,
-      delay,
-      repeat: Infinity,
-      repeatDelay: Math.random() * 10 + 5
-    }}
-    style={{
-      color,
-      fontSize: isMobile ? '18px' : '24px',
-      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))'
-    }}
-  >
-    {icon}
-  </motion.div>
-));
+const FloatingIcon = memo(({ icon, color, initialX, initialY, delay, isMobile }) => {
+  const animationRef = useRef(null);
+  
+  useEffect(() => {
+    if (animationRef.current) {
+      animationRef.current.play();
+    }
+  }, []);
+  
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `${initialX}px`,
+        top: `${initialY}px`,
+        color,
+        fontSize: isMobile ? '18px' : '24px',
+        filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))',
+        transformOrigin: 'center'
+      }}
+    />
+  );
+});
+
+FloatingIcon.displayName = 'FloatingIcon';
 
 // Optimized Ripple Component
-const RippleEffect = React.memo(({ ripple }) => (
-  <motion.div
-    className="absolute pointer-events-none rounded-full"
-    initial={{
-      scale: 0,
-      opacity: 0.7,
-      x: ripple.x - (ripple.isMobile ? 15 : 20),
-      y: ripple.y - (ripple.isMobile ? 15 : 20),
-      width: ripple.isMobile ? 30 : 40,
-      height: ripple.isMobile ? 30 : 40,
-      background: `radial-gradient(circle, ${ripple.color}, ${ripple.color.replace('0.6', '0.2')})`
-    }}
-    animate={{
-      scale: [0, ripple.isMobile ? 3 : 4, ripple.isMobile ? 3.5 : 5],
-      opacity: [0.7, 0.3, 0],
-      width: [
-        ripple.isMobile ? 30 : 40, 
-        ripple.isMobile ? 120 : 160, 
-        ripple.isMobile ? 140 : 200
-      ],
-      height: [
-        ripple.isMobile ? 30 : 40, 
-        ripple.isMobile ? 120 : 160, 
-        ripple.isMobile ? 140 : 200
-      ],
-      x: [
-        ripple.x - (ripple.isMobile ? 15 : 20), 
-        ripple.x - (ripple.isMobile ? 60 : 80), 
-        ripple.x - (ripple.isMobile ? 70 : 100)
-      ],
-      y: [
-        ripple.y - (ripple.isMobile ? 15 : 20), 
-        ripple.y - (ripple.isMobile ? 60 : 80), 
-        ripple.y - (ripple.isMobile ? 70 : 100)
-      ]
-    }}
-    exit={{ opacity: 0 }}
-    transition={{
-      duration: ripple.isMobile ? 0.9 : 1.2,
-      ease: "easeOut"
-    }}
-    style={{
-      filter: `blur(${ripple.isMobile ? 8 : 12}px)`,
-      mixBlendMode: "screen"
-    }}
-  />
-));
+const RippleEffect = memo(({ ripple }) => {
+  const animationRef = useRef(null);
+  
+  useEffect(() => {
+    if (animationRef.current) {
+      animationRef.current.play();
+    }
+  }, []);
+  
+  return (
+    <div
+      className="absolute pointer-events-none rounded-full"
+      style={{
+        left: `${ripple.x}px`,
+        top: `${ripple.y}px`,
+        background: `radial-gradient(circle, ${ripple.color}, ${ripple.color.replace('0.6', '0.2')})`,
+        mixBlendMode: "screen",
+        transformOrigin: 'center'
+      }}
+    />
+  );
+});
+
+RippleEffect.displayName = 'RippleEffect';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -196,36 +203,46 @@ const Login = () => {
   const containerRef = useRef(null);
   const navigate = useNavigate();
 
-  // Optimized mobile detection
+  // Apply console override once
+  useEffect(() => {
+    if (!consoleApplied) {
+      console.warn = CONSOLE_OVERRIDE.warn;
+      consoleApplied = true;
+    }
+  }, []);
+
+  // Optimized mobile detection with debounce
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      if (mobile !== isMobile) {
+        setIsMobile(mobile);
+      }
     };
     
     checkMobile();
     
-    // Throttle resize events
     let resizeTimeout;
     const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(checkMobile, 100);
+      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+      resizeTimeout = requestAnimationFrame(checkMobile);
     };
     
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     
     return () => {
       window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimeout);
+      if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
     };
-  }, []);
+  }, [isMobile]);
 
-  // Optimized mouse tracking
+  // Optimized motion values
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const cardX = useMotionValue(0);
   const cardY = useMotionValue(0);
 
-  // Optimized scroll animations
+  // Optimized scroll animations with memoization
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
@@ -239,7 +256,7 @@ const Login = () => {
     damping: isMobile ? 40 : 35 
   });
 
-  // Optimized ripple effect handler
+  // Optimized ripple effect handler with throttling
   const handleInteraction = useCallback((e) => {
     const target = e.target;
     if (
@@ -285,14 +302,19 @@ const Login = () => {
       isMobile
     };
 
-    setRipples(prev => [...prev.slice(-5), newRipple]);
-
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
-    }, isMobile ? 900 : 1200);
+    setRipples(prev => {
+      const newRipples = [...prev.slice(-5), newRipple];
+      
+      // Auto-cleanup
+      setTimeout(() => {
+        setRipples(current => current.filter(r => r.id !== newRipple.id));
+      }, isMobile ? 900 : 1200);
+      
+      return newRipples;
+    });
   }, [isMobile]);
 
-  // Optimized move handler
+  // Optimized move handler with requestAnimationFrame
   const handleMove = useCallback((e) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -311,32 +333,41 @@ const Login = () => {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     
-    setTouchPosition({ x, y });
-    
-    if (!isMobile) {
-      setHoverGlow({ x, y, active: true });
-    }
+    requestAnimationFrame(() => {
+      setTouchPosition({ x, y });
+      
+      if (!isMobile) {
+        setHoverGlow({ x, y, active: true });
+      }
+    });
   }, [isMobile]);
 
   // Optimized mouse effects for desktop
   useEffect(() => {
     if (isMobile) return;
 
+    let animationFrame;
     const onMove = (e) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
+      if (animationFrame) cancelAnimationFrame(animationFrame);
       
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      
-      mouseX.set(nx);
-      mouseY.set(ny);
-      
-      cardX.set(nx * 15);
-      cardY.set(ny * 10);
+      animationFrame = requestAnimationFrame(() => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        
+        const nx = (e.clientX - rect.left) / rect.width - 0.5;
+        const ny = (e.clientY - rect.top) / rect.height - 0.5;
+        
+        mouseX.set(nx);
+        mouseY.set(ny);
+        
+        cardX.set(nx * 15);
+        cardY.set(ny * 10);
+      });
     };
 
     const onLeave = () => {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      
       animate(mouseX, 0, { type: "spring", stiffness: 100, damping: 15 });
       animate(mouseY, 0, { type: "spring", stiffness: 100, damping: 15 });
       animate(cardX, 0, { type: "spring", stiffness: 90, damping: 15 });
@@ -346,7 +377,7 @@ const Login = () => {
 
     const node = containerRef.current;
     if (node) {
-      node.addEventListener("pointermove", onMove);
+      node.addEventListener("pointermove", onMove, { passive: true });
       node.addEventListener("pointerleave", onLeave);
     }
     
@@ -355,6 +386,7 @@ const Login = () => {
         node.removeEventListener("pointermove", onMove);
         node.removeEventListener("pointerleave", onLeave);
       }
+      if (animationFrame) cancelAnimationFrame(animationFrame);
     };
   }, [isMobile, mouseX, mouseY, cardX, cardY]);
 
@@ -364,48 +396,76 @@ const Login = () => {
   const rotateYSpring = useSpring(rotateY, { stiffness: 200, damping: 25 });
   const rotateXSpring = useSpring(rotateX, { stiffness: 200, damping: 25 });
 
-  // Optimized Particle options
-  const particleOptions = React.useMemo(() => ({
+  // Memoized Particle options
+  const particleOptions = useMemo(() => ({
+    fpsLimit: 60,
     particles: {
       number: { 
-        value: isMobile ? 40 : 60, 
+        value: isMobile ? 20 : 30, 
         density: { 
           enable: true, 
-          value_area: isMobile ? 500 : 700 
+          value_area: isMobile ? 300 : 400 
         } 
       },
       color: { value: ["#22c55e", "#10b981", "#34d399", "#059669"] },
       shape: { type: "circle" },
       opacity: { 
-        value: isMobile ? 0.12 : 0.15, 
+        value: isMobile ? 0.08 : 0.12, 
         random: true,
       },
       size: { 
-        value: isMobile ? 2 : 2.5, 
+        value: isMobile ? 1.5 : 2, 
         random: true,
       },
       move: {
         enable: true,
-        speed: isMobile ? 0.3 : 0.4,
+        speed: isMobile ? 0.2 : 0.3,
         direction: "none",
         random: true,
         straight: false,
-        outMode: "bounce",
+        out_mode: "out",
+        bounce: false,
       }
     },
     interactivity: {
       events: {
-        onhover: { enable: !isMobile, mode: "repulse" },
-        onclick: { enable: true, mode: "push" }
+        onhover: { 
+          enable: !isMobile, 
+          mode: "repulse",
+          distance: 100
+        },
+        onclick: { 
+          enable: true, 
+          mode: "push",
+          quantity: 2
+        }
+      },
+      modes: {
+        repulse: {
+          distance: 80,
+          duration: 0.4
+        },
+        push: {
+          quantity: 4
+        }
       }
     },
-    detectRetina: true
+    detectRetina: true,
+    background: {
+      color: "transparent"
+    }
   }), [isMobile]);
 
-  // Cleanup ripples
+  // Cleanup ripples with ref
+  const ripplesRef = useRef(ripples);
+  useEffect(() => {
+    ripplesRef.current = ripples;
+  }, [ripples]);
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setRipples(prev => prev.filter(r => Date.now() - r.id < 1500));
+      const now = Date.now();
+      setRipples(prev => prev.filter(r => now - r.id < 1500));
     }, 500);
     
     return () => clearInterval(interval);
@@ -422,7 +482,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
 
@@ -436,7 +496,16 @@ const Login = () => {
       alert('Google login failed: ' + error.code);
       console.error('Google login error:', error.code, error.message);
     }
-  };
+  }, [navigate]);
+
+  // Memoized floating icons config
+  const floatingIconsConfig = useMemo(() => [
+    {icon: '🍏', color: '#10B981', x: -30, y: -20},
+    {icon: '🥦', color: '#34D399', x: 40, y: -10},
+    {icon: '🔒', color: '#22C55E', x: 20, y: 30},
+    {icon: '📱', color: '#059669', x: -20, y: 30},
+    {icon: '⭐', color: '#7C3AED', x: 30, y: -30}
+  ], []);
 
   return (
     <div 
@@ -447,10 +516,11 @@ const Login = () => {
       onMouseMove={!isMobile ? handleMove : undefined}
       onMouseLeave={() => !isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
       onTouchEnd={() => isMobile && setHoverGlow(prev => ({ ...prev, active: false }))}
-      className="relative min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default"
+      className="relative min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default touch-manipulation"
       style={{
         WebkitTapHighlightColor: 'transparent',
-        touchAction: 'pan-y'
+        touchAction: 'manipulation',
+        contain: 'layout style paint'
       }}
     >
       {/* Interactive Background Layer */}
@@ -458,46 +528,22 @@ const Login = () => {
       
       {/* Optimized Particle Background */}
       <Particles
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 -z-10 will-change-transform"
         options={particleOptions}
         key={isMobile ? 'mobile' : 'desktop'}
       />
 
       {/* Ripple Effects Container */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-30 will-change-transform">
         <AnimatePresence>
           {ripples.map(ripple => (
             <RippleEffect key={ripple.id} ripple={ripple} />
           ))}
         </AnimatePresence>
 
-        {/* Hover Glow (Desktop only) */}
-        {!isMobile && (
-          <motion.div
-            className="absolute pointer-events-none rounded-full"
-            animate={{
-              scale: hoverGlow.active ? 1 : 0,
-              opacity: hoverGlow.active ? 0.2 : 0,
-              x: hoverGlow.x - 60,
-              y: hoverGlow.y - 60
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 150,
-              damping: 20
-            }}
-            style={{
-              width: 120,
-              height: 120,
-              background: "radial-gradient(circle, rgba(34,197,94,0.3), rgba(16,185,129,0.1), transparent 70%)",
-              filter: "blur(15px)"
-            }}
-          />
-        )}
-
         {/* Touch/Mouse Trail Effect */}
         <motion.div
-          className="absolute pointer-events-none rounded-full"
+          className="absolute pointer-events-none rounded-full will-change-transform"
           animate={{
             x: touchPosition.x - (isMobile ? 6 : 8),
             y: touchPosition.y - (isMobile ? 6 : 8)
@@ -517,9 +563,9 @@ const Login = () => {
         />
       </div>
 
-      {/* Background Orbs */}
+      {/* Background Orbs - Optimized */}
       <motion.div
-        className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full pointer-events-none"
+        className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full pointer-events-none will-change-transform"
         initial={{ opacity: 0 }}
         animate={{ 
           opacity: isMobile ? 0.08 : 0.12,
@@ -530,12 +576,13 @@ const Login = () => {
           repeat: Infinity, 
           ease: "easeInOut" 
         }}
+        style={{ transformOrigin: 'center' }}
       >
         <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300/40 via-emerald-300/30 to-teal-200/30 blur-[80px]" />
       </motion.div>
 
       <motion.div
-        className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none"
+        className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none will-change-transform"
         initial={{ opacity: 0 }}
         animate={{ 
           opacity: isMobile ? 0.06 : 0.1,
@@ -547,6 +594,7 @@ const Login = () => {
           ease: "easeInOut",
           delay: 0.5
         }}
+        style={{ transformOrigin: 'center' }}
       >
         <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200/30 via-emerald-200/20 to-green-300/20 blur-[60px]" />
       </motion.div>
@@ -560,7 +608,7 @@ const Login = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="relative z-10 w-full max-w-md px-4"
+        className="relative z-10 w-full max-w-md px-4 will-change-transform"
       >
         {/* Login Card */}
         <motion.div
@@ -573,11 +621,11 @@ const Login = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative group"
+          className="relative group will-change-transform"
         >
           {/* Card Background Glow */}
           <motion.div
-            className="absolute -inset-3 -z-10 rounded-3xl"
+            className="absolute -inset-3 -z-10 rounded-3xl will-change-transform"
             animate={{
               opacity: [0.08, 0.15, 0.08],
               scale: [1, 1.02, 1]
@@ -589,12 +637,13 @@ const Login = () => {
             }}
             style={{
               background: "radial-gradient(circle at center, rgba(34,197,94,0.12), transparent 70%)",
-              filter: "blur(20px)"
+              filter: "blur(20px)",
+              transformOrigin: 'center'
             }}
           />
 
           {/* Main Card */}
-          <div className="relative bg-white/85 backdrop-blur-sm rounded-2xl border border-green-100/50 shadow-xl p-6 sm:p-8">
+          <div className="relative bg-white/85 backdrop-blur-sm rounded-2xl border border-green-100/50 shadow-xl p-6 sm:p-8 will-change-transform">
             
             {/* Header */}
             <motion.div
@@ -612,14 +661,7 @@ const Login = () => {
                   repeat: Infinity,
                   ease: "linear"
                 }}
-                className="font-bold text-3xl sm:text-4xl mb-3"
-                style={{
-                  background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
-                  backgroundSize: '300% 300%',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent'
-                }}
+                className="font-bold text-3xl sm:text-4xl mb-3 bg-clip-text text-transparent bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 bg-[length:200%_auto]"
               >
                 Welcome Back
               </motion.h2>
@@ -654,19 +696,15 @@ const Login = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Email Address
                 </label>
-                <motion.input
+                <input
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  whileFocus={{ 
-                    boxShadow: "0px 0px 0px 2px rgba(34,197,94,0.2)",
-                    borderColor: "#22C55E"
-                  }}
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
-                  focus:outline-none transition-all duration-300
-                  hover:border-green-300"
+                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent
+                  transition-all duration-300 hover:border-green-300"
                 />
               </div>
 
@@ -675,19 +713,15 @@ const Login = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
-                <motion.input
+                <input
                   type="password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  whileFocus={{ 
-                    boxShadow: "0px 0px 0px 2px rgba(34,197,94,0.2)",
-                    borderColor: "#22C55E"
-                  }}
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
-                  focus:outline-none transition-all duration-300
-                  hover:border-green-300"
+                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent
+                  transition-all duration-300 hover:border-green-300"
                 />
               </div>
 
@@ -702,7 +736,7 @@ const Login = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-md transition-all duration-300"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 touch-manipulation"
               >
                 Login
               </motion.button>
@@ -728,23 +762,25 @@ const Login = () => {
                 scale: 1.02,
                 boxShadow: "0px 4px 15px rgba(0, 0, 0, 0.1)"
               }}
-              className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3 rounded-lg font-medium border border-gray-300 shadow-sm transition-all duration-300"
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3 rounded-lg font-medium border border-gray-300 shadow-sm hover:shadow transition-all duration-300 active:scale-95 touch-manipulation"
             >
               <img
                 src="https://www.svgrepo.com/show/475656/google-color.svg"
                 alt="Google"
                 className="w-5 h-5"
+                loading="lazy"
+                decoding="async"
               />
               Sign in with Google
             </motion.button>
 
-            {/* Signup Link - FIXED DOM NESTING ERROR */}
+            {/* Signup Link */}
             <div className="mt-6 pt-5 border-t border-gray-100 text-center">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 relative">
                 Don't have an account?{' '}
                 <Link
                   to="/signin"
-                  className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group"
+                  className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group relative"
                 >
                   <span>Sign up</span>
                   <motion.span
@@ -754,7 +790,6 @@ const Login = () => {
                   >
                     →
                   </motion.span>
-                  {/* Underline effect using span instead of div */}
                   <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-green-500 to-emerald-500 group-hover:w-full transition-all duration-300" />
                 </Link>
               </div>
@@ -776,32 +811,25 @@ const Login = () => {
           </div>
 
          {/* Floating Icons (Desktop only) */}
-{!isMobile && (
-  <div className="absolute -top-4 -right-4 -bottom-4 -left-4 pointer-events-none">
-    {[
-      {icon: '🍏', color: '#10B981', x: -30, y: -20},
-      {icon: '🥦', color: '#34D399', x: 40, y: -10},
-      {icon: '🔒', color: '#22C55E', x: 20, y: 30},
-      {icon: '📱', color: '#059669', x: -20, y: 30},
-      {icon: '⭐', color: '#7C3AED', x: 30, y: -30}
-    ].map((item, idx) => (
-      <FloatingIcon
-        key={idx}
-        icon={item.icon}
-        color={item.color}
-        initialX={item.x}
-        initialY={item.y}
-        delay={idx * 0.5}
-        isMobile={isMobile}
-      />
-    ))}
-  </div>
-)}
+         {!isMobile && (
+            <div className="absolute -top-4 -right-4 -bottom-4 -left-4 pointer-events-none">
+              {floatingIconsConfig.map((item, idx) => (
+                <FloatingIcon
+                  key={idx}
+                  icon={item.icon}
+                  color={item.color}
+                  initialX={item.x}
+                  initialY={item.y}
+                  delay={idx * 0.5}
+                  isMobile={isMobile}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
       </motion.div>
     </div>
   );
 };
 
-export default Login;
-
+export default memo(Login);

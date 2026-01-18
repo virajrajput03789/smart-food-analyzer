@@ -1,29 +1,36 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 
-const InfoRow = ({ label, value }) => (
+// Memoized components to prevent unnecessary re-renders
+const InfoRow = memo(({ label, value }) => (
   <motion.div 
-    className="bg-green-100 text-green-800 p-3 rounded-xl shadow-sm flex justify-between hover:scale-[1.02] transform transition-all duration-300 hover:shadow-lg hover:bg-gradient-to-r hover:from-green-100 hover:to-emerald-100 border border-transparent hover:border-green-300 group cursor-pointer"
+    className="bg-green-100 text-green-800 p-3 rounded-xl shadow-sm flex justify-between hover:scale-[1.02] transform transition-all duration-300 hover:shadow-lg hover:bg-gradient-to-r hover:from-green-100 hover:to-emerald-100 border border-transparent hover:border-green-300 group cursor-pointer will-change-transform"
     whileHover={{ y: -2 }}
     whileTap={{ scale: 0.98 }}
+    initial={false}
   >
     <span className="font-medium group-hover:text-green-900 transition-colors duration-200">{label}</span>
     <span className="font-bold group-hover:scale-110 transition-transform duration-200">{value}</span>
   </motion.div>
-);
+));
+InfoRow.displayName = 'InfoRow';
 
-// Improved ImpactRow with better visualization
-const ImpactRow = ({ label, value, max = 20, positive = false }) => {
-  const abs = Math.abs(Number(value) || 0);
-  const pct = Math.min(100, Math.round((abs / max) * 100));
-  const barColor = positive ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-red-400 to-rose-500";
-  const sign = positive ? "+" : "-";
+// Optimized ImpactRow with useMemo for calculations
+const ImpactRow = memo(({ label, value, max = 20, positive = false }) => {
+  const { abs, pct, barColor, sign } = useMemo(() => {
+    const abs = Math.abs(Number(value) || 0);
+    const pct = Math.min(100, Math.round((abs / max) * 100));
+    const barColor = positive ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-red-400 to-rose-500";
+    const sign = positive ? "+" : "-";
+    return { abs, pct, barColor, sign };
+  }, [value, max, positive]);
 
   return (
     <motion.div 
       className="flex flex-col mb-4 group cursor-pointer"
       whileHover={{ x: 5 }}
       whileTap={{ scale: 0.98 }}
+      initial={false}
     >
       <div className="flex justify-between text-sm mb-1">
         <span className="text-gray-700 group-hover:text-gray-900 transition-colors duration-200 font-medium">{label}</span>
@@ -33,7 +40,7 @@ const ImpactRow = ({ label, value, max = 20, positive = false }) => {
       </div>
       <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden group-hover:bg-gray-200 transition-colors duration-300 shadow-inner">
         <motion.div
-          className={`${barColor} h-full rounded-full group-hover:brightness-110 transition-all duration-300`}
+          className={`${barColor} h-full rounded-full group-hover:brightness-110 transition-all duration-300 will-change-transform`}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: "easeOut" }}
@@ -45,31 +52,32 @@ const ImpactRow = ({ label, value, max = 20, positive = false }) => {
       </div>
     </motion.div>
   );
+});
+ImpactRow.displayName = 'ImpactRow';
+
+// Memoized NutriScoreBadges with static data outside component
+const GRADE_INFO = {
+  A: { bg: "bg-gradient-to-r from-green-600 to-emerald-700", text: "text-white", label: "Excellent" },
+  B: { bg: "bg-gradient-to-r from-green-400 to-lime-500", text: "text-white", label: "Good" },
+  C: { bg: "bg-gradient-to-r from-yellow-400 to-amber-500", text: "text-black", label: "Average" },
+  D: { bg: "bg-gradient-to-r from-orange-500 to-red-400", text: "text-white", label: "Poor" },
+  E: { bg: "bg-gradient-to-r from-red-600 to-rose-700", text: "text-white", label: "Avoid" },
 };
+const ORDER = ["A", "B", "C", "D", "E"];
 
-// Enhanced NutriScoreBadges with better visual feedback
-const NutriScoreBadges = ({ grade }) => {
-  const gradeInfo = {
-    A: { bg: "bg-gradient-to-r from-green-600 to-emerald-700", text: "text-white", label: "Excellent" },
-    B: { bg: "bg-gradient-to-r from-green-400 to-lime-500", text: "text-white", label: "Good" },
-    C: { bg: "bg-gradient-to-r from-yellow-400 to-amber-500", text: "text-black", label: "Average" },
-    D: { bg: "bg-gradient-to-r from-orange-500 to-red-400", text: "text-white", label: "Poor" },
-    E: { bg: "bg-gradient-to-r from-red-600 to-rose-700", text: "text-white", label: "Avoid" },
-  };
-  
-  const order = ["A", "B", "C", "D", "E"];
-
+const NutriScoreBadges = memo(({ grade }) => {
   return (
     <div className="flex flex-col items-center mb-6">
       <div className="flex justify-center gap-1 mb-3 flex-wrap">
-        {order.map((g) => (
+        {ORDER.map((g) => (
           <motion.div
             key={g}
             className={`px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-bold text-base sm:text-lg min-w-[50px] sm:min-w-[60px] text-center cursor-pointer
-              ${g === grade ? gradeInfo[g].bg + " " + gradeInfo[g].text + " shadow-lg" : "bg-gray-100 text-gray-400 hover:bg-gray-200"} 
-              transition-all duration-300 border-2 ${g === grade ? 'border-white' : 'border-transparent'}`}
+              ${g === grade ? GRADE_INFO[g].bg + " " + GRADE_INFO[g].text + " shadow-lg" : "bg-gray-100 text-gray-400 hover:bg-gray-200"} 
+              transition-all duration-300 border-2 ${g === grade ? 'border-white' : 'border-transparent'} will-change-transform`}
             whileHover={{ scale: 1.08, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            initial={false}
           >
             {g}
           </motion.div>
@@ -77,39 +85,42 @@ const NutriScoreBadges = ({ grade }) => {
       </div>
       {grade && (
         <motion.p 
-          className={`text-base sm:text-lg font-bold ${gradeInfo[grade].text.replace('text-black', 'text-gray-800')} hover:scale-105 transition-transform duration-200`}
+          className={`text-base sm:text-lg font-bold ${GRADE_INFO[grade].text.replace('text-black', 'text-gray-800')} hover:scale-105 transition-transform duration-200`}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.05 }}
         >
-          {gradeInfo[grade].label} Quality
+          {GRADE_INFO[grade].label} Quality
         </motion.p>
       )}
     </div>
   );
+});
+NutriScoreBadges.displayName = 'NutriScoreBadges';
+
+// Optimized ScoreRing with memoized color function
+const getGradeColor = (grade) => {
+  switch(grade) {
+    case 'A': return '#4CAF50';
+    case 'B': return '#8BC34A';
+    case 'C': return '#FFC107';
+    case 'D': return '#FF9800';
+    case 'E': return '#F44336';
+    default: return '#9E9E9E';
+  }
 };
 
-// New ScoreRing component for visual score representation
-const ScoreRing = ({ score, grade }) => {
-  const getGradeColor = () => {
-    switch(grade) {
-      case 'A': return '#4CAF50';
-      case 'B': return '#8BC34A';
-      case 'C': return '#FFC107';
-      case 'D': return '#FF9800';
-      case 'E': return '#F44336';
-      default: return '#9E9E9E';
-    }
-  };
+const ScoreRing = memo(({ score, grade }) => {
+  const gradeColor = useMemo(() => getGradeColor(grade), [grade]);
 
   return (
     <motion.div 
-      className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-4 group cursor-pointer"
+      className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-4 group cursor-pointer will-change-transform"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
+      initial={false}
     >
       <svg className="w-full h-full group-hover:rotate-12 transition-transform duration-500" viewBox="0 0 100 100">
-        {/* Background circle */}
         <circle
           cx="50"
           cy="50"
@@ -119,13 +130,12 @@ const ScoreRing = ({ score, grade }) => {
           strokeWidth="8"
           className="group-hover:stroke-gray-300 transition-colors duration-300"
         />
-        {/* Score circle */}
         <motion.circle
           cx="50"
           cy="50"
           r="45"
           fill="none"
-          stroke={getGradeColor()}
+          stroke={gradeColor}
           strokeWidth="8"
           strokeLinecap="round"
           initial={{ strokeDasharray: "0 283" }}
@@ -136,13 +146,12 @@ const ScoreRing = ({ score, grade }) => {
           transform="rotate(-90 50 50)"
           className="group-hover:stroke-width-10 transition-all duration-300"
         />
-        {/* Glow effect on hover */}
         <circle
           cx="50"
           cy="50"
           r="45"
           fill="none"
-          stroke={getGradeColor()}
+          stroke={gradeColor}
           strokeWidth="0"
           className="opacity-0 group-hover:opacity-30 group-hover:stroke-width-20 transition-all duration-500"
           transform="rotate(-90 50 50)"
@@ -164,251 +173,44 @@ const ScoreRing = ({ score, grade }) => {
       </div>
     </motion.div>
   );
-};
+});
+ScoreRing.displayName = 'ScoreRing';
 
-// Enhanced explanations with detailed vegetable emoji descriptions
-const generateExplanations = (nutrients, breakdown) => {
-  const explanations = [];
-
-  // High Priority Warnings (Critical Issues)
-  if (breakdown?.penalty > 15) {
-    explanations.push({
-      text: "Multiple concerning nutrients detected - Contains high levels of sugars, saturated fats, and sodium which may impact long-term health",
-      type: "warning",
-      emoji: "🥦⚠️",
-      priority: 1
-    });
-  }
-
-  // Calorie Analysis
-  const calories = Number(nutrients?.calories || 0);
-  if (calories >= 400) {
-    explanations.push({
-      text: "High calorie density - Consider smaller portions or pairing with low-calorie vegetables like 🥬 lettuce, 🥒 cucumber, or 🍅 tomatoes for balanced meals",
-      type: "warning",
-      emoji: "🥔🔥",
-      priority: 2
-    });
-  } else if (calories >= 200) {
-    explanations.push({
-      text: "Moderate energy content - Suitable for main meals when combined with fiber-rich vegetables like 🥦 broccoli and 🥕 carrots",
-      type: "neutral",
-      emoji: "🥕⚖️",
-      priority: 3
-    });
-  } else if (calories > 0) {
-    explanations.push({
-      text: "Low calorie option - Excellent for weight management, pair with nutrient-dense 🥑 avocado or 🫑 bell peppers for complete nutrition",
-      type: "positive",
-      emoji: "🥬✅",
-      priority: 4
-    });
-  }
-
-  // Protein Analysis
-  const protein = Number(nutrients?.protein || 0);
-  if (protein >= 10) {
-    explanations.push({
-      text: "Excellent protein source - Great for muscle maintenance, consider adding 🥦 broccoli or spinach for complete amino acid profile",
-      type: "positive",
-      emoji: "🌱💪",
-      priority: 2
-    });
-  } else if (protein >= 5) {
-    explanations.push({
-      text: "Good protein content - Supports satiety, pair with legumes like lentils or chickpeas for plant-based protein boost",
-      type: "neutral",
-      emoji: "🫑👍",
-      priority: 3
-    });
-  } else if (protein > 0) {
-    explanations.push({
-      text: "Low protein content - May not keep you full long, consider adding 🥦 broccoli, spinach, or peas to increase protein intake",
-      type: "warning",
-      emoji: "🥒⚠️",
-      priority: 4
-    });
-  }
-
-  // Fiber Analysis
-  const fiber = Number(nutrients?.fiber || 0);
-  if (fiber >= 4) {
-    explanations.push({
-      text: "Excellent fiber content - Promotes digestive health and supports gut microbiome, similar to 🥦 broccoli and 🥕 carrots",
-      type: "positive",
-      emoji: "🌾🌟",
-      priority: 2
-    });
-  } else if (fiber >= 2) {
-    explanations.push({
-      text: "Good fiber level - Supports regular digestion, consider adding more 🥬 leafy greens for optimal gut health",
-      type: "positive",
-      emoji: "🥕🌱",
-      priority: 3
-    });
-  } else if (fiber > 0) {
-    explanations.push({
-      text: "Low fiber content - Could be improved for better digestion, add 🥦 broccoli, 🥕 carrots, or Brussels sprouts to meals",
-      type: "warning",
-      emoji: "🥬📉",
-      priority: 4
-    });
-  }
-
-  // Sugar Analysis
-  const sugars = Number(nutrients?.sugars || 0);
-  if (sugars >= 15) {
-    explanations.push({
-      text: "Very high sugar content - Limit consumption to occasional treats, choose vegetables like 🥒 cucumber or 🥬 celery as healthier alternatives",
-      type: "warning",
-      emoji: "🍅🚫",
-      priority: 1
-    });
-  } else if (sugars >= 8) {
-    explanations.push({
-      text: "High sugar level - Consume in moderation, pair with low-sugar vegetables like 🥦 broccoli or zucchini to balance blood sugar",
-      type: "warning",
-      emoji: "🫑⚠️",
-      priority: 2
-    });
-  } else if (sugars > 0) {
-    explanations.push({
-      text: "Moderate natural sugars - Acceptable level, similar to natural sugars found in 🥕 carrots or 🍅 tomatoes",
-      type: "neutral",
-      emoji: "🥕🍯",
-      priority: 3
-    });
-  }
-
-  // Saturated Fat Analysis
-  const satFat = Number(nutrients?.saturatedFat || 0);
-  if (satFat >= 8) {
-    explanations.push({
-      text: "Very high saturated fat - Not heart healthy, replace with foods rich in healthy fats from 🥑 avocado or nuts",
-      type: "warning",
-      emoji: "🥦🚫",
-      priority: 1
-    });
-  } else if (satFat >= 4) {
-    explanations.push({
-      text: "High saturated fat - Consider alternatives with healthier fats like those found in 🥑 avocado or olives",
-      type: "warning",
-      emoji: "🫑🔴",
-      priority: 2
-    });
-  } else if (satFat > 0) {
-    explanations.push({
-      text: "Moderate saturated fat - Within acceptable limits, balance with heart-healthy vegetables like 🥬 spinach and kale",
-      type: "neutral",
-      emoji: "🥕🟡",
-      priority: 3
-    });
-  }
-
-  // Sodium Analysis
-  const sodium = Number(nutrients?.sodium || 0);
-  const sodiumMg = sodium * 1000;
-  if (sodiumMg >= 1000) {
-    explanations.push({
-      text: "Very high sodium - May raise blood pressure, choose fresh vegetables like 🥒 cucumber or 🥬 lettuce instead of processed options",
-      type: "warning",
-      emoji: "🥕🧂",
-      priority: 1
-    });
-  } else if (sodiumMg >= 500) {
-    explanations.push({
-      text: "High sodium content - Monitor intake, enhance flavor with herbs and spices instead of salt",
-      type: "warning",
-      emoji: "🥬⚡",
-      priority: 2
-    });
-  } else if (sodium > 0) {
-    explanations.push({
-      text: "Reasonable sodium level - Within healthy limits, similar to naturally occurring sodium in vegetables",
-      type: "positive",
-      emoji: "🥒✅",
-      priority: 3
-    });
-  }
-
-  // Add positive highlights with detailed explanations
-  if (breakdown?.fiber > 2) {
-    explanations.push({
-      text: `Fiber bonus points (+${breakdown.fiber}) - Excellent for digestive health, similar to the benefits of eating 🥦 broccoli and 🥕 carrots regularly`,
-      type: "positive",
-      emoji: "🌿🌟",
-      priority: 2
-    });
-  }
-  if (breakdown?.protein > 2) {
-    explanations.push({
-      text: `Protein bonus points (+${breakdown.protein}) - Great for muscle health and satiety, complements plant proteins from vegetables`,
-      type: "positive",
-      emoji: "🥬💪",
-      priority: 2
-    });
-  }
-
-  // Add final summary based on grade with detailed recommendations
-  if (breakdown?.grade === 'A' || breakdown?.grade === 'B') {
-    explanations.push({
-      text: "Excellent nutritional choice - Well-balanced profile suitable for regular consumption. Pair with a variety of colorful vegetables like 🍅 tomatoes, 🫑 bell peppers, and 🥦 broccoli for optimal health benefits",
-      type: "positive",
-      emoji: "🎉🌟",
-      priority: 1
-    });
-  } else if (breakdown?.grade === 'C') {
-    explanations.push({
-      text: "Average nutritional value - Okay for occasional consumption. Improve by adding more nutrient-dense vegetables like 🥬 kale, spinach, and Brussels sprouts to your meals",
-      type: "neutral",
-      emoji: "🤔🥕",
-      priority: 1
-    });
-  } else if (breakdown?.grade === 'D' || breakdown?.grade === 'E') {
-    explanations.push({
-      text: "Limited nutritional value - Consider healthier alternatives. Focus on whole vegetables like 🥦 broccoli, 🥕 carrots, and 🥬 leafy greens for better nutrition and long-term health benefits",
-      type: "warning",
-      emoji: "⚠️🥒",
-      priority: 1
-    });
-  }
-
-  // Sort by priority (lower number = higher priority)
-  return explanations.sort((a, b) => a.priority - b.priority);
-};
-
-// Separate component for explanation cards with enhanced hover effects
-const ExplanationCard = ({ explanation, index }) => {
+// Memoized ExplanationCard with optimized event handlers
+const ExplanationCard = memo(({ explanation, index }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const cardStyles = {
+  const cardStyles = useMemo(() => ({
     positive: "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-400 hover:shadow-lg",
     warning: "bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-400 hover:shadow-lg",
     neutral: "bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:border-blue-400 hover:shadow-lg"
-  };
+  }), []);
 
-  const textStyles = {
+  const textStyles = useMemo(() => ({
     positive: "text-green-800 group-hover:text-green-900",
     warning: "text-red-800 group-hover:text-red-900",
     neutral: "text-blue-800 group-hover:text-blue-900"
-  };
+  }), []);
 
-  const headerStyles = {
+  const headerStyles = useMemo(() => ({
     positive: "text-green-700 group-hover:text-green-800",
     warning: "text-red-700 group-hover:text-red-800",
     neutral: "text-blue-700 group-hover:text-blue-800"
-  };
+  }), []);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
-      className={`p-4 rounded-xl border-2 ${cardStyles[explanation.type]} transition-all duration-300 group cursor-pointer mb-3`}
+      className={`p-4 rounded-xl border-2 ${cardStyles[explanation.type]} transition-all duration-300 group cursor-pointer mb-3 will-change-transform`}
       whileHover={{ scale: 1.02, y: -3 }}
       whileTap={{ scale: 0.98 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="flex items-start gap-3">
         <motion.span 
@@ -437,29 +239,266 @@ const ExplanationCard = ({ explanation, index }) => {
       </div>
     </motion.div>
   );
-};
+});
+ExplanationCard.displayName = 'ExplanationCard';
 
+// Main optimized component
 const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
-  const explanations = generateExplanations(nutrients, { 
+  // Optimized generateExplanations function - moved inside component
+  const generateExplanations = useCallback((nutrients, breakdown) => {
+    const explanations = [];
+
+    // High Priority Warnings
+    if (breakdown?.penalty > 15) {
+      explanations.push({
+        text: "Multiple concerning nutrients detected - Contains high levels of sugars, saturated fats, and sodium which may impact long-term health",
+        type: "warning",
+        emoji: "🥦⚠️",
+        priority: 1
+      });
+    }
+
+    // Calorie Analysis
+    const calories = Number(nutrients?.calories || 0);
+    if (calories >= 400) {
+      explanations.push({
+        text: "High calorie density - Consider smaller portions or pairing with low-calorie vegetables like 🥬 lettuce, 🥒 cucumber, or 🍅 tomatoes for balanced meals",
+        type: "warning",
+        emoji: "🥔🔥",
+        priority: 2
+      });
+    } else if (calories >= 200) {
+      explanations.push({
+        text: "Moderate energy content - Suitable for main meals when combined with fiber-rich vegetables like 🥦 broccoli and 🥕 carrots",
+        type: "neutral",
+        emoji: "🥕⚖️",
+        priority: 3
+      });
+    } else if (calories > 0) {
+      explanations.push({
+        text: "Low calorie option - Excellent for weight management, pair with nutrient-dense 🥑 avocado or 🫑 bell peppers for complete nutrition",
+        type: "positive",
+        emoji: "🥬✅",
+        priority: 4
+      });
+    }
+
+    // Protein Analysis
+    const protein = Number(nutrients?.protein || 0);
+    if (protein >= 10) {
+      explanations.push({
+        text: "Excellent protein source - Great for muscle maintenance, consider adding 🥦 broccoli or spinach for complete amino acid profile",
+        type: "positive",
+        emoji: "🌱💪",
+        priority: 2
+      });
+    } else if (protein >= 5) {
+      explanations.push({
+        text: "Good protein content - Supports satiety, pair with legumes like lentils or chickpeas for plant-based protein boost",
+        type: "neutral",
+        emoji: "🫑👍",
+        priority: 3
+      });
+    } else if (protein > 0) {
+      explanations.push({
+        text: "Low protein content - May not keep you full long, consider adding 🥦 broccoli, spinach, or peas to increase protein intake",
+        type: "warning",
+        emoji: "🥒⚠️",
+        priority: 4
+      });
+    }
+
+    // Fiber Analysis
+    const fiber = Number(nutrients?.fiber || 0);
+    if (fiber >= 4) {
+      explanations.push({
+        text: "Excellent fiber content - Promotes digestive health and supports gut microbiome, similar to 🥦 broccoli and 🥕 carrots",
+        type: "positive",
+        emoji: "🌾🌟",
+        priority: 2
+      });
+    } else if (fiber >= 2) {
+      explanations.push({
+        text: "Good fiber level - Supports regular digestion, consider adding more 🥬 leafy greens for optimal gut health",
+        type: "positive",
+        emoji: "🥕🌱",
+        priority: 3
+      });
+    } else if (fiber > 0) {
+      explanations.push({
+        text: "Low fiber content - Could be improved for better digestion, add 🥦 broccoli, 🥕 carrots, or Brussels sprouts to meals",
+        type: "warning",
+        emoji: "🥬📉",
+        priority: 4
+      });
+    }
+
+    // Sugar Analysis
+    const sugars = Number(nutrients?.sugars || 0);
+    if (sugars >= 15) {
+      explanations.push({
+        text: "Very high sugar content - Limit consumption to occasional treats, choose vegetables like 🥒 cucumber or 🥬 celery as healthier alternatives",
+        type: "warning",
+        emoji: "🍅🚫",
+        priority: 1
+      });
+    } else if (sugars >= 8) {
+      explanations.push({
+        text: "High sugar level - Consume in moderation, pair with low-sugar vegetables like 🥦 broccoli or zucchini to balance blood sugar",
+        type: "warning",
+        emoji: "🫑⚠️",
+        priority: 2
+      });
+    } else if (sugars > 0) {
+      explanations.push({
+        text: "Moderate natural sugars - Acceptable level, similar to natural sugars found in 🥕 carrots or 🍅 tomatoes",
+        type: "neutral",
+        emoji: "🥕🍯",
+        priority: 3
+      });
+    }
+
+    // Saturated Fat Analysis
+    const satFat = Number(nutrients?.saturatedFat || 0);
+    if (satFat >= 8) {
+      explanations.push({
+        text: "Very high saturated fat - Not heart healthy, replace with foods rich in healthy fats from 🥑 avocado or nuts",
+        type: "warning",
+        emoji: "🥦🚫",
+        priority: 1
+      });
+    } else if (satFat >= 4) {
+      explanations.push({
+        text: "High saturated fat - Consider alternatives with healthier fats like those found in 🥑 avocado or olives",
+        type: "warning",
+        emoji: "🫑🔴",
+        priority: 2
+      });
+    } else if (satFat > 0) {
+      explanations.push({
+        text: "Moderate saturated fat - Within acceptable limits, balance with heart-healthy vegetables like 🥬 spinach and kale",
+        type: "neutral",
+        emoji: "🥕🟡",
+        priority: 3
+      });
+    }
+
+    // Sodium Analysis
+    const sodium = Number(nutrients?.sodium || 0);
+    const sodiumMg = sodium * 1000;
+    if (sodiumMg >= 1000) {
+      explanations.push({
+        text: "Very high sodium - May raise blood pressure, choose fresh vegetables like 🥒 cucumber or 🥬 lettuce instead of processed options",
+        type: "warning",
+        emoji: "🥕🧂",
+        priority: 1
+      });
+    } else if (sodiumMg >= 500) {
+      explanations.push({
+        text: "High sodium content - Monitor intake, enhance flavor with herbs and spices instead of salt",
+        type: "warning",
+        emoji: "🥬⚡",
+        priority: 2
+      });
+    } else if (sodium > 0) {
+      explanations.push({
+        text: "Reasonable sodium level - Within healthy limits, similar to naturally occurring sodium in vegetables",
+        type: "positive",
+        emoji: "🥒✅",
+        priority: 3
+      });
+    }
+
+    // Add positive highlights
+    if (breakdown?.fiber > 2) {
+      explanations.push({
+        text: `Fiber bonus points (+${breakdown.fiber}) - Excellent for digestive health, similar to the benefits of eating 🥦 broccoli and 🥕 carrots regularly`,
+        type: "positive",
+        emoji: "🌿🌟",
+        priority: 2
+      });
+    }
+    if (breakdown?.protein > 2) {
+      explanations.push({
+        text: `Protein bonus points (+${breakdown.protein}) - Great for muscle health and satiety, complements plant proteins from vegetables`,
+        type: "positive",
+        emoji: "🥬💪",
+        priority: 2
+      });
+    }
+
+    // Final summary
+    if (breakdown?.grade === 'A' || breakdown?.grade === 'B') {
+      explanations.push({
+        text: "Excellent nutritional choice - Well-balanced profile suitable for regular consumption. Pair with a variety of colorful vegetables like 🍅 tomatoes, 🫑 bell peppers, and 🥦 broccoli for optimal health benefits",
+        type: "positive",
+        emoji: "🎉🌟",
+        priority: 1
+      });
+    } else if (breakdown?.grade === 'C') {
+      explanations.push({
+        text: "Average nutritional value - Okay for occasional consumption. Improve by adding more nutrient-dense vegetables like 🥬 kale, spinach, and Brussels sprouts to your meals",
+        type: "neutral",
+        emoji: "🤔🥕",
+        priority: 1
+      });
+    } else if (breakdown?.grade === 'D' || breakdown?.grade === 'E') {
+      explanations.push({
+        text: "Limited nutritional value - Consider healthier alternatives. Focus on whole vegetables like 🥦 broccoli, 🥕 carrots, and 🥬 leafy greens for better nutrition and long-term health benefits",
+        type: "warning",
+        emoji: "⚠️🥒",
+        priority: 1
+      });
+    }
+
+    return explanations.sort((a, b) => a.priority - b.priority);
+  }, []);
+
+  // Memoize all expensive calculations
+  const breakdownData = useMemo(() => ({ 
     ...score?.breakdown, 
     grade: score?.grade 
-  });
+  }), [score?.breakdown, score?.grade]);
 
-  // Group explanations by type
-  const positiveExplanations = explanations.filter(exp => exp.type === "positive");
-  const warningExplanations = explanations.filter(exp => exp.type === "warning");
-  const neutralExplanations = explanations.filter(exp => exp.type === "neutral");
+  const explanations = useMemo(() => 
+    generateExplanations(nutrients, breakdownData),
+    [nutrients, breakdownData, generateExplanations]
+  );
 
-  // Check if product name and image are available
-  const hasProductName = productName && productName.trim() !== '';
-  const hasImage = image && image.trim() !== '';
+  const positiveExplanations = useMemo(() => 
+    explanations.filter(exp => exp.type === "positive"),
+    [explanations]
+  );
+  const warningExplanations = useMemo(() => 
+    explanations.filter(exp => exp.type === "warning"),
+    [explanations]
+  );
+  const neutralExplanations = useMemo(() => 
+    explanations.filter(exp => exp.type === "neutral"),
+    [explanations]
+  );
+
+  const hasProductName = useMemo(() => 
+    productName && productName.trim() !== '',
+    [productName]
+  );
+
+  const hasImage = useMemo(() => 
+    image && image.trim() !== '',
+    [image]
+  );
+
+  // Optimized image handler with lazy loading
+  const handleImageError = useCallback((e) => {
+    e.target.style.display = 'none';
+  }, []);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 80, damping: 14 }}
-      className="mt-4 sm:mt-8 bg-white border border-gray-200 p-3 sm:p-6 rounded-2xl shadow-xl max-w-lg mx-auto text-left hover:shadow-2xl transition-all duration-500 w-full hover:border-green-300"
+      className="mt-4 sm:mt-8 bg-white border border-gray-200 p-3 sm:p-6 rounded-2xl shadow-xl max-w-lg mx-auto text-left hover:shadow-2xl transition-all duration-500 w-full hover:border-green-300 will-change-transform"
     >
       {/* Product Name Section */}
       <motion.div
@@ -488,7 +527,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
         </h2>
       </motion.div>
 
-      {/* Product Image Section */}
+      {/* Product Image Section - Optimized with lazy loading */}
       {hasImage ? (
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -500,7 +539,11 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           <img
             src={image}
             alt="Product"
+            loading="lazy"
+            decoding="async"
             className="w-full h-auto max-h-64 object-contain rounded-xl border-2 border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 group-hover:border-green-400 group-hover:ring-4 group-hover:ring-green-100"
+            onError={handleImageError}
+            style={{ contentVisibility: 'auto' }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-transparent to-transparent group-hover:to-green-50/30 rounded-xl transition-all duration-300" />
         </motion.div>
@@ -529,7 +572,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
 
       {/* Score Display Section */}
       <motion.div 
-        className="bg-gradient-to-br from-gray-50 to-white p-4 sm:p-6 rounded-2xl shadow-inner mb-6 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg group"
+        className="bg-gradient-to-br from-gray-50 to-white p-4 sm:p-6 rounded-2xl shadow-inner mb-6 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg group will-change-transform"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
@@ -656,7 +699,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
 
       {/* Final Grade Summary */}
       <motion.div
-        className="mt-6 p-4 sm:p-6 bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl text-white hover:from-gray-800 hover:to-gray-600 transition-all duration-300 group"
+        className="mt-6 p-4 sm:p-6 bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl text-white hover:from-gray-800 hover:to-gray-600 transition-all duration-300 group will-change-transform"
         whileHover={{ scale: 1.02, y: -3 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -676,7 +719,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
               score?.grade === 'C' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-black' :
               score?.grade === 'D' ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600' :
               'bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800'
-            } transition-all duration-300`}
+            } transition-all duration-300 will-change-transform`}
             animate={{ 
               scale: [1, 1.1, 1],
               transition: { repeat: Infinity, repeatDelay: 3 }
@@ -706,7 +749,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
         }}
         whileTap={{ scale: 0.95 }}
         onClick={onReset}
-        className="mt-8 w-full text-base font-semibold px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 group"
+        className="mt-8 w-full text-base font-semibold px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 group will-change-transform touch-manipulation"
       >
         <motion.span
           whileHover={{ rotate: 180 }}
@@ -723,5 +766,4 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
   );
 };
 
-export default FoodResultCard;
-
+export default memo(FoodResultCard);
