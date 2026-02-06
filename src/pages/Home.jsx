@@ -2180,7 +2180,7 @@ export default function Home() {
                 >
                   {HeroTitle}
                   
-                  <motion.p
+                  <motion.div
                     animate={reducedMotion ? {} : { 
                       opacity: [0.9, 1, 0.9]
                     }}
@@ -2209,7 +2209,7 @@ export default function Home() {
                         variant="accent"
                       />
                     </Typography>
-                  </motion.p>
+                  </motion.div>
                   
                   {PrimaryCTA}
                   
@@ -2389,7 +2389,7 @@ export default function Home() {
                 />
               </motion.h2>
               
-              <motion.p
+              <motion.div
                 className={`text-gray-600 mb-8 ${
                   isMobile ? 'text-sm' : 'text-lg'
                 } max-w-2xl mx-auto`}
@@ -2402,7 +2402,7 @@ export default function Home() {
                   speed={40} 
                   variant="body"
                 />
-              </motion.p>
+              </motion.div>
               
               <motion.div
                 whileHover={!isMobile && !reducedMotion ? { 
