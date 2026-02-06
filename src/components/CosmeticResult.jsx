@@ -1,6 +1,157 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// Typing Animation Component (Updated with new fonts)
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  React.useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  React.useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-purple-400 to-purple-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-purple-400 to-purple-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// MAIN COMPONENT CODE
+// ============================================
+
 // Memoized static components to prevent re-renders
 const SkinTypeButton = React.memo(({ type, isSelected, onClick }) => (
   <button
@@ -10,10 +161,11 @@ const SkinTypeButton = React.memo(({ type, isSelected, onClick }) => (
         ? 'border-purple-500 bg-purple-50 shadow-sm' 
         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
     }`}
+    style={TYPOGRAPHY_CONFIG.button}
   >
     <div className="text-2xl mb-1">{type.icon}</div>
-    <div className="font-medium text-gray-900 text-sm">{type.label}</div>
-    <div className="text-gray-500 text-xs mt-1">{type.desc}</div>
+    <Typography variant="accent" className="font-medium text-gray-900 text-sm">{type.label}</Typography>
+    <Typography variant="body" className="text-gray-500 text-xs mt-1">{type.desc}</Typography>
   </button>
 ));
 
@@ -27,6 +179,7 @@ const TabButton = React.memo(({ tab, isActive, onClick }) => (
         ? 'border-b-2 border-purple-600 text-purple-700' 
         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
     }`}
+    style={TYPOGRAPHY_CONFIG.button}
   >
     {tab === 'overview' && '📊 Overview'}
     {tab === 'ingredients' && '🧪 Ingredients'}
@@ -50,17 +203,17 @@ const SafetyIndicator = React.memo(({ score, safetyLevel, grade }) => {
       <div className={`bg-gradient-to-r ${safetyColor} w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center shadow-lg`}>
         <div className="text-center">
           <div className="text-3xl sm:text-4xl font-bold text-white">{score}</div>
-          <div className="text-white text-sm font-medium">/100</div>
+          <Typography variant="body" className="text-white text-sm font-medium">/100</Typography>
         </div>
       </div>
       
       <div className="flex-1">
-        <div className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
+        <Typography variant="subheading" className="text-lg sm:text-xl text-gray-900 mb-1 font-bold">
           {safetyLevel} Safety
-        </div>
-        <div className="text-gray-600 mb-2">
+        </Typography>
+        <Typography variant="body" className="text-gray-600 mb-2">
           Grade: <span className="font-bold text-lg">{grade}</span>
-        </div>
+        </Typography>
         <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4 overflow-hidden">
           <div 
             className={`h-full bg-gradient-to-r ${safetyColor} transition-all duration-1000`}
@@ -84,13 +237,16 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4">
         <div className="text-6xl mb-6">🔍</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-3">No Product Data Found</h2>
-        <p className="text-gray-600 text-center mb-8 max-w-md">
+        <Typography variant="heading" className="text-2xl text-gray-800 mb-3">
+          <TypingAnimation text="No Product Data Found" speed={40} variant="heading" />
+        </Typography>
+        <Typography variant="body" className="text-gray-600 text-center mb-8 max-w-md">
           Could not load cosmetic product information. Please try scanning again or check your connection.
-        </p>
+        </Typography>
         <button
           onClick={onReset}
           className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105 active:scale-95"
+          style={TYPOGRAPHY_CONFIG.button}
         >
           ← Back to Product Scanner
         </button>
@@ -546,28 +702,28 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
           <div className="text-2xl sm:text-3xl font-bold text-gray-900">{productInfo.score}</div>
-          <div className="text-gray-600 text-sm">Safety Score</div>
+          <Typography variant="accent" className="text-gray-600 text-sm">Safety Score</Typography>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
           <div className="text-2xl sm:text-3xl font-bold text-gray-900">{productInfo.ingredientsCount}</div>
-          <div className="text-gray-600 text-sm">Ingredients</div>
+          <Typography variant="accent" className="text-gray-600 text-sm">Ingredients</Typography>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center">
           <div className="text-2xl sm:text-3xl font-bold text-gray-900">{productInfo.grade}</div>
-          <div className="text-gray-600 text-sm">Grade</div>
+          <Typography variant="accent" className="text-gray-600 text-sm">Grade</Typography>
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 text-center">
           <div className="text-2xl sm:text-3xl font-bold text-gray-900">{productInfo.keyIngredients.length}</div>
-          <div className="text-gray-600 text-sm">Key Ingredients</div>
+          <Typography variant="accent" className="text-gray-600 text-sm">Key Ingredients</Typography>
         </div>
       </div>
       
       {userSkinType && (
         <div className="bg-gradient-to-r from-gray-50 to-white rounded-xl p-5 border border-gray-200">
-          <h3 className="font-bold text-gray-900 mb-3 flex items-center">
+          <Typography variant="subheading" className="text-gray-900 mb-3 flex items-center">
             <span className="mr-2">🎯</span>
-            Compatibility with {skinTypes.find(t => t.id === userSkinType)?.label} Skin
-          </h3>
+            <TypingAnimation text={`Compatibility with ${skinTypes.find(t => t.id === userSkinType)?.label} Skin`} speed={40} variant="subheading" />
+          </Typography>
           <div className={`inline-flex items-center px-4 py-2 rounded-full font-medium mb-3 ${
             skinTypeAnalysis.compatible === 'good' ? 'bg-emerald-100 text-emerald-800' :
             skinTypeAnalysis.compatible === 'moderate' ? 'bg-amber-100 text-amber-800' :
@@ -585,7 +741,7 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
               {skinTypeAnalysis.warnings.map((warning, idx) => (
                 <div key={idx} className="flex items-start text-gray-700">
                   <span className="text-amber-500 mr-2 mt-1">⚠️</span>
-                  <span className="text-sm">{warning}</span>
+                  <Typography variant="body" className="text-sm">{warning}</Typography>
                 </div>
               ))}
             </div>
@@ -594,15 +750,15 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
       )}
       
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200">
-        <h3 className="font-bold text-gray-900 mb-3 flex items-center">
+        <Typography variant="subheading" className="text-gray-900 mb-3 flex items-center">
           <span className="mr-2">👍</span>
-          Recommended For
-        </h3>
+          <TypingAnimation text="Recommended For" speed={40} variant="subheading" />
+        </Typography>
         <div className="flex flex-wrap gap-2">
           {productInfo.recommendedSkinTypes.map((type, idx) => (
             <div key={idx} className="bg-white border border-green-300 text-green-800 px-4 py-2 rounded-full font-medium flex items-center">
               <span className="mr-2">✅</span>
-              {type}
+              <Typography variant="accent">{type}</Typography>
             </div>
           ))}
         </div>
@@ -613,10 +769,10 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
   const renderIngredientsTab = useMemo(() => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+        <Typography variant="subheading" className="text-xl text-gray-900 mb-4 flex items-center">
           <span className="text-purple-600 mr-3">🔑</span>
-          Key Active Ingredients
-        </h3>
+          <TypingAnimation text="Key Active Ingredients" speed={40} variant="subheading" />
+        </Typography>
         
         {productInfo.keyIngredients.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -630,12 +786,12 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-1">
+                    <Typography variant="subheading" className="text-gray-900 text-lg mb-1 font-bold">
                       {ingredient.name}
-                    </h4>
-                    <p className="text-gray-600 text-sm mb-2">
+                    </Typography>
+                    <Typography variant="body" className="text-gray-600 text-sm mb-2">
                       {ingredient.description}
-                    </p>
+                    </Typography>
                   </div>
                 </div>
                 
@@ -643,7 +799,7 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                   {ingredient.benefits.map((benefit, bIdx) => (
                     <div key={bIdx} className="flex items-start">
                       <span className="text-green-500 mt-0.5 mr-2">✓</span>
-                      <span className="text-gray-700 text-sm">{benefit}</span>
+                      <Typography variant="body" className="text-gray-700 text-sm">{benefit}</Typography>
                     </div>
                   ))}
                 </div>
@@ -654,7 +810,7 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-purple-600 hover:text-purple-800 text-sm font-medium"
                 >
-                  Learn more on Wikipedia
+                  <Typography variant="accent">Learn more on Wikipedia</Typography>
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -665,7 +821,7 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-xl">
             <div className="text-4xl mb-4">🧪</div>
-            <p className="text-gray-600">No key ingredients identified</p>
+            <Typography variant="body" className="text-gray-600">No key ingredients identified</Typography>
           </div>
         )}
       </div>
@@ -673,18 +829,19 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
       {productInfo.allIngredients.length > 0 && (
         <div className="bg-gray-50 rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-gray-900 flex items-center">
+            <Typography variant="subheading" className="text-gray-900 flex items-center">
               <span className="mr-3">📋</span>
-              Complete Ingredients List
+              <TypingAnimation text="Complete Ingredients List" speed={40} variant="subheading" />
               <span className="ml-3 bg-gray-800 text-white px-3 py-1 rounded-full text-sm">
                 {productInfo.ingredientsCount} ingredients
               </span>
-            </h3>
+            </Typography>
             
             {productInfo.allIngredients.length > 12 && (
               <button
                 onClick={handleExpandIngredients}
                 className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                style={TYPOGRAPHY_CONFIG.button}
               >
                 {expandedIngredients ? 'Show Less' : 'Show All'}
               </button>
@@ -720,34 +877,35 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
               <button
                 onClick={handleExpandIngredients}
                 className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                style={TYPOGRAPHY_CONFIG.button}
               >
-                + {productInfo.allIngredients.length - 12} more ingredients
+                <Typography variant="accent">+ {productInfo.allIngredients.length - 12} more ingredients</Typography>
               </button>
             </div>
           )}
           
           <div className="mt-6 pt-4 border-t border-gray-300">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Safety Legend</h4>
+            <Typography variant="accent" className="text-sm text-gray-700 mb-3">Safety Legend</Typography>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-emerald-500 rounded mr-2"></div>
-                <span className="text-xs text-gray-600">Excellent</span>
+                <Typography variant="body" className="text-xs text-gray-600">Excellent</Typography>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-green-400 rounded mr-2"></div>
-                <span className="text-xs text-gray-600">Good</span>
+                <Typography variant="body" className="text-xs text-gray-600">Good</Typography>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-amber-500 rounded mr-2"></div>
-                <span className="text-xs text-gray-600">Caution</span>
+                <Typography variant="body" className="text-xs text-gray-600">Caution</Typography>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
-                <span className="text-xs text-gray-600">Avoid</span>
+                <Typography variant="body" className="text-xs text-gray-600">Avoid</Typography>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
-                <span className="text-xs text-gray-600">Neutral</span>
+                <Typography variant="body" className="text-xs text-gray-600">Neutral</Typography>
               </div>
             </div>
           </div>
@@ -760,10 +918,10 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
     <div className="space-y-6">
       {productInfo.safetyConcerns.length > 0 ? (
         <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-5 border border-red-200">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center">
+          <Typography variant="subheading" className="text-gray-900 mb-4 flex items-center">
             <span className="text-red-600 mr-3">⚠️</span>
-            Safety Considerations
-          </h3>
+            <TypingAnimation text="Safety Considerations" speed={40} variant="subheading" />
+          </Typography>
           <div className="space-y-4">
             {productInfo.safetyConcerns.map((concern, idx) => (
               <div key={idx} className="bg-white rounded-lg p-4 border border-red-100">
@@ -773,15 +931,15 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                     concern.severity === 'medium' ? 'bg-amber-500' : 'bg-yellow-500'
                   }`} />
                   <div>
-                    <div className="font-bold text-gray-900 mb-1">
+                    <Typography variant="subheading" className="text-gray-900 mb-1">
                       {concern.ingredient}
-                    </div>
-                    <div className="text-gray-700 text-sm">
+                    </Typography>
+                    <Typography variant="body" className="text-gray-700 text-sm">
                       {concern.concern}
-                    </div>
-                    <div className="text-gray-500 text-xs mt-2">
+                    </Typography>
+                    <Typography variant="accent" className="text-gray-500 text-xs mt-2">
                       Severity: {concern.severity.charAt(0).toUpperCase() + concern.severity.slice(1)}
-                    </div>
+                    </Typography>
                   </div>
                 </div>
               </div>
@@ -793,32 +951,34 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
           <div className="flex items-center">
             <span className="text-3xl text-green-500 mr-4">✅</span>
             <div>
-              <h3 className="font-bold text-gray-900 mb-1">No Major Safety Concerns</h3>
-              <p className="text-gray-700">
+              <Typography variant="subheading" className="text-gray-900 mb-1">
+                <TypingAnimation text="No Major Safety Concerns" speed={40} variant="subheading" />
+              </Typography>
+              <Typography variant="body" className="text-gray-700">
                 This product has a clean safety profile with no known concerning ingredients.
-              </p>
+              </Typography>
             </div>
           </div>
         </div>
       )}
       
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-5 border border-blue-200">
-        <h3 className="font-bold text-gray-900 mb-4 flex items-center">
+        <Typography variant="subheading" className="text-gray-900 mb-4 flex items-center">
           <span className="text-blue-600 mr-3">💡</span>
-          Safety Tips
-        </h3>
+          <TypingAnimation text="Safety Tips" speed={40} variant="subheading" />
+        </Typography>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-lg p-4 border border-blue-100">
-            <div className="font-medium text-gray-900 mb-2">Patch Test</div>
-            <p className="text-gray-600 text-sm">
+            <Typography variant="accent" className="text-gray-900 mb-2">Patch Test</Typography>
+            <Typography variant="body" className="text-gray-600 text-sm">
               Always patch test new products on your inner arm for 24 hours before full facial application.
-            </p>
+            </Typography>
           </div>
           <div className="bg-white rounded-lg p-4 border border-blue-100">
-            <div className="font-medium text-gray-900 mb-2">Expiration</div>
-            <p className="text-gray-600 text-sm">
+            <Typography variant="accent" className="text-gray-900 mb-2">Expiration</Typography>
+            <Typography variant="body" className="text-gray-600 text-sm">
               Check expiration dates and discard products that have changed color, consistency, or smell.
-            </p>
+            </Typography>
           </div>
         </div>
       </div>
@@ -828,10 +988,10 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
   const renderUsageTab = useMemo(() => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+        <Typography variant="subheading" className="text-xl text-gray-900 mb-4 flex items-center">
           <span className="text-blue-600 mr-3">📋</span>
-          How to Use
-        </h3>
+          <TypingAnimation text="How to Use" speed={40} variant="subheading" />
+        </Typography>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {productInfo.usageInstructions.map((step, idx) => (
@@ -844,9 +1004,9 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                 <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xl font-bold mb-3">
                   {idx + 1}
                 </div>
-                <p className="text-gray-800 font-medium">
+                <Typography variant="accent" className="text-gray-800 font-medium">
                   {step}
-                </p>
+                </Typography>
               </div>
             </motion.div>
           ))}
@@ -854,26 +1014,26 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
       </div>
       
       <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-200">
-        <h3 className="font-bold text-gray-900 mb-4 flex items-center">
+        <Typography variant="subheading" className="text-gray-900 mb-4 flex items-center">
           <span className="text-purple-600 mr-3">⭐</span>
-          Best Practices
-        </h3>
+          <TypingAnimation text="Best Practices" speed={40} variant="subheading" />
+        </Typography>
         <div className="space-y-3">
           <div className="flex items-start">
             <span className="text-purple-500 mt-0.5 mr-3">•</span>
-            <span className="text-gray-700">Apply to clean skin for optimal absorption</span>
+            <Typography variant="body" className="text-gray-700">Apply to clean skin for optimal absorption</Typography>
           </div>
           <div className="flex items-start">
             <span className="text-purple-500 mt-0.5 mr-3">•</span>
-            <span className="text-gray-700">Use sunscreen daily when using active ingredients</span>
+            <Typography variant="body" className="text-gray-700">Use sunscreen daily when using active ingredients</Typography>
           </div>
           <div className="flex items-start">
             <span className="text-purple-500 mt-0.5 mr-3">•</span>
-            <span className="text-gray-700">Introduce one new product at a time</span>
+            <Typography variant="body" className="text-gray-700">Introduce one new product at a time</Typography>
           </div>
           <div className="flex items-start">
             <span className="text-purple-500 mt-0.5 mr-3">•</span>
-            <span className="text-gray-700">Consult a dermatologist for persistent skin concerns</span>
+            <Typography variant="body" className="text-gray-700">Consult a dermatologist for persistent skin concerns</Typography>
           </div>
         </div>
       </div>
@@ -892,13 +1052,14 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
           <button
             onClick={handleReset}
             className="group inline-flex items-center text-gray-700 hover:text-purple-700 font-medium text-sm sm:text-base transition-all duration-200 hover:scale-105 active:scale-95"
+            style={TYPOGRAPHY_CONFIG.button}
           >
             <svg className="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="border-b border-transparent group-hover:border-purple-700 transition-all">
+            <Typography variant="accent" className="border-b border-transparent group-hover:border-purple-700 transition-all">
               Back to Scanner
-            </span>
+            </Typography>
           </button>
         </div>
 
@@ -917,9 +1078,9 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8">
                       <div className="text-6xl sm:text-7xl text-gray-300 mb-4">🧴</div>
-                      <div className="text-gray-400 text-center font-medium">
+                      <Typography variant="accent" className="text-gray-400 text-center font-medium">
                         {productInfo.name}
-                      </div>
+                      </Typography>
                     </div>
                   )}
                 </div>
@@ -927,12 +1088,12 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <div className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-4 py-2 rounded-full font-semibold text-sm flex items-center">
                     <span className="mr-2">🏷️</span>
-                    {productInfo.productType}
+                    <Typography variant="accent">{productInfo.productType}</Typography>
                   </div>
                   
                   {productInfo.barcode && (
                     <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-mono text-sm">
-                      🏷️ {productInfo.barcode.substring(0, 12)}...
+                      <Typography variant="accent">🏷️ {productInfo.barcode.substring(0, 12)}...</Typography>
                     </div>
                   )}
                 </div>
@@ -941,14 +1102,14 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
               <div className="lg:w-3/5">
                 <div className="mb-6">
                   <div className="inline-block bg-gray-900 text-white px-4 py-1.5 rounded-lg text-sm font-bold mb-3">
-                    {productInfo.brand}
+                    <Typography variant="accent">{productInfo.brand}</Typography>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 leading-tight">
-                    {productInfo.name}
-                  </h1>
-                  <p className="text-gray-600 text-base sm:text-lg leading-relaxed">
+                  <Typography variant="heading" className="text-2xl sm:text-3xl lg:text-4xl text-gray-900 mb-3 leading-tight">
+                    <TypingAnimation text={productInfo.name} speed={30} variant="heading" />
+                  </Typography>
+                  <Typography variant="body" className="text-gray-600 text-base sm:text-lg leading-relaxed">
                     {productInfo.description}
-                  </p>
+                  </Typography>
                 </div>
                 
                 <div className="mb-8">
@@ -961,17 +1122,17 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                   </div>
                   
                   <div className="flex justify-between text-sm text-gray-500 mt-2">
-                    <span>0</span>
-                    <span>Safety Score</span>
-                    <span>100</span>
+                    <Typography variant="accent">0</Typography>
+                    <Typography variant="accent">Safety Score</Typography>
+                    <Typography variant="accent">100</Typography>
                   </div>
                 </div>
                 
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                  <Typography variant="subheading" className="text-gray-900 mb-3 flex items-center">
                     <span className="mr-2">👤</span>
-                    Select Your Skin Type for Personalized Analysis
-                  </h3>
+                    <TypingAnimation text="Select Your Skin Type for Personalized Analysis" speed={40} variant="subheading" />
+                  </Typography>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                     {skinTypes.map((type) => (
                       <SkinTypeButton
@@ -1010,12 +1171,12 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
           <div className="bg-gradient-to-r from-gray-900 to-black p-6 md:p-8">
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
               <div className="text-center lg:text-left">
-                <div className="text-xl font-bold text-white mb-2">
-                  Ready to analyze another product?
-                </div>
-                <p className="text-gray-300">
+                <Typography variant="subheading" className="text-xl text-white mb-2">
+                  <TypingAnimation text="Ready to analyze another product?" speed={40} variant="subheading" />
+                </Typography>
+                <Typography variant="body" className="text-gray-300">
                   Scan more cosmetics for safety, ingredients, and compatibility.
-                </p>
+                </Typography>
               </div>
               
               <motion.button
@@ -1023,21 +1184,22 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
                 whileTap={{ scale: 0.97 }}
                 onClick={handleReset}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-3"
+                style={TYPOGRAPHY_CONFIG.button}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                 </svg>
-                Scan Another Product
+                <TypingAnimation text="Scan Another Product" speed={30} variant="accent" />
               </motion.button>
             </div>
             
             <div className="mt-8 pt-6 border-t border-gray-800 text-center">
-              <div className="text-gray-400 text-sm">
+              <Typography variant="body" className="text-gray-400 text-sm">
                 Data analyzed from: <span className="font-medium text-gray-300">{productInfo.source}</span>
-              </div>
-              <div className="text-gray-500 text-xs mt-2">
+              </Typography>
+              <Typography variant="body" className="text-gray-500 text-xs mt-2">
                 Always perform patch tests and consult professionals for specific concerns
-              </div>
+              </Typography>
             </div>
           </div>
         </div>
@@ -1047,12 +1209,12 @@ const CosmeticResult = React.memo(({ data, onReset }) => {
             <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            <span className="font-medium">Important Disclaimer</span>
+            <Typography variant="accent" className="font-medium">Important Disclaimer</Typography>
           </div>
-          <p className="text-gray-600">
+          <Typography variant="body" className="text-gray-600">
             This analysis is for informational purposes only. Always patch test new products and 
             consult with a dermatologist for specific skincare concerns. Data sourced from {productInfo.source}.
-          </p>
+          </Typography>
         </div>
       </div>
     </motion.div>

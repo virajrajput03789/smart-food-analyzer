@@ -13,6 +13,92 @@ import {
 } from 'framer-motion';
 import Particles from 'react-tsparticles';
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
 // Static console override to prevent re-creation
 const ORIGINAL_CONSOLE = { ...console };
 const CONSOLE_OVERRIDE = {
@@ -652,7 +738,7 @@ const Login = () => {
               transition={{ delay: 0.1 }}
               className="text-center mb-8"
             >
-              <motion.h2
+              <Typography variant="heading" as={motion.h2}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                 }}
@@ -664,9 +750,9 @@ const Login = () => {
                 className="font-bold text-3xl sm:text-4xl mb-3 bg-clip-text text-transparent bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 bg-[length:200%_auto]"
               >
                 Welcome Back
-              </motion.h2>
+              </Typography>
               
-              <motion.p
+              <Typography variant="body" as={motion.p}
                 animate={{ 
                   opacity: [0.7, 0.9, 0.7],
                 }}
@@ -678,7 +764,7 @@ const Login = () => {
                 className="text-gray-600 text-sm sm:text-base"
               >
                 Sign in to continue your health journey
-              </motion.p>
+              </Typography>
               
               {/* Underline */}
               <motion.div
@@ -693,9 +779,9 @@ const Login = () => {
             <form className="space-y-5" onSubmit={handleLogin}>
               {/* Email Input */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">
+                <Typography variant="accent" className="block text-sm font-medium text-gray-700">
                   Email Address
-                </label>
+                </Typography>
                 <input
                   type="email"
                   placeholder="Enter your email"
@@ -705,14 +791,15 @@ const Login = () => {
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
                   focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent
                   transition-all duration-300 hover:border-green-300"
+                  style={TYPOGRAPHY_CONFIG.body}
                 />
               </div>
 
               {/* Password Input */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">
+                <Typography variant="accent" className="block text-sm font-medium text-gray-700">
                   Password
-                </label>
+                </Typography>
                 <input
                   type="password"
                   placeholder="Enter your password"
@@ -722,6 +809,7 @@ const Login = () => {
                   className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg 
                   focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent
                   transition-all duration-300 hover:border-green-300"
+                  style={TYPOGRAPHY_CONFIG.body}
                 />
               </div>
 
@@ -737,6 +825,7 @@ const Login = () => {
                 transition={{ delay: 0.2 }}
                 type="submit"
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 touch-manipulation"
+                style={TYPOGRAPHY_CONFIG.button}
               >
                 Login
               </motion.button>
@@ -748,9 +837,9 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-gray-500">
+                <Typography variant="body" className="px-3 bg-white text-gray-500">
                   Or continue with
-                </span>
+                </Typography>
               </div>
             </div>
 
@@ -763,6 +852,7 @@ const Login = () => {
                 boxShadow: "0px 4px 15px rgba(0, 0, 0, 0.1)"
               }}
               className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3 rounded-lg font-medium border border-gray-300 shadow-sm hover:shadow transition-all duration-300 active:scale-95 touch-manipulation"
+              style={TYPOGRAPHY_CONFIG.button}
             >
               <img
                 src="https://www.svgrepo.com/show/475656/google-color.svg"
@@ -777,27 +867,30 @@ const Login = () => {
             {/* Signup Link */}
             <div className="mt-6 pt-5 border-t border-gray-100 text-center">
               <div className="text-sm text-gray-600 relative">
-                Don't have an account?{' '}
-                <Link
-                  to="/signin"
-                  className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group relative"
-                >
-                  <span>Sign up</span>
-                  <motion.span
-                    animate={{ x: [0, 2, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-green-600"
+                <Typography variant="body">
+                  Don't have an account?{' '}
+                  <Link
+                    to="/signin"
+                    className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group relative"
+                    style={TYPOGRAPHY_CONFIG.button}
                   >
-                    →
-                  </motion.span>
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-green-500 to-emerald-500 group-hover:w-full transition-all duration-300" />
-                </Link>
+                    <span>Sign up</span>
+                    <motion.span
+                      animate={{ x: [0, 2, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="text-green-600"
+                    >
+                      →
+                    </motion.span>
+                    <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-green-500 to-emerald-500 group-hover:w-full transition-all duration-300" />
+                  </Link>
+                </Typography>
               </div>
             </div>
 
             {/* Footer Note */}
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-500">
+              <Typography variant="body" className="text-xs text-gray-500">
                 By signing in, you agree to our{' '}
                 <Link to="/terms" className="text-green-600 hover:underline">
                   Terms
@@ -806,7 +899,7 @@ const Login = () => {
                 <Link to="/privacy" className="text-green-600 hover:underline">
                   Privacy Policy
                 </Link>
-              </p>
+              </Typography>
             </div>
           </div>
 

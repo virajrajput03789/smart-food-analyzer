@@ -14,6 +14,92 @@ import {
 } from 'framer-motion';
 import Particles from 'react-tsparticles';
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
 // ULTRA OPTIMIZED Micro Interaction Component - No re-renders
 const MicroInteraction = React.memo(({ type, x, y, color, isMobile }) => {
   const animationRef = useRef(null);
@@ -795,7 +881,7 @@ const Signup = () => {
               transition={{ delay: 0.1 }}
               className="text-center mb-8"
             >
-              <motion.h2
+              <Typography variant="heading" as={motion.h2}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                 }}
@@ -816,9 +902,9 @@ const Signup = () => {
                 }}
               >
                 Create Your Account
-              </motion.h2>
+              </Typography>
               
-              <motion.p
+              <Typography variant="body" as={motion.p}
                 animate={{ 
                   opacity: [0.7, 0.9, 0.7],
                 }}
@@ -830,7 +916,7 @@ const Signup = () => {
                 className="text-gray-600 text-sm sm:text-base select-none"
               >
                 Start your health journey with us
-              </motion.p>
+              </Typography>
               
               {/* Underline */}
               <motion.div
@@ -845,9 +931,9 @@ const Signup = () => {
             <form className="space-y-5" onSubmit={handleSignup}>
               {/* Name Input */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 select-none">
+                <Typography variant="accent" className="block text-sm font-medium text-gray-700 select-none">
                   Full Name
-                </label>
+                </Typography>
                 <motion.input
                   type="text"
                   placeholder="Enter your full name"
@@ -862,14 +948,15 @@ const Signup = () => {
                   focus:outline-none transition-all duration-300
                   hover:border-green-300 focus:border-green-400
                   bg-white/95 backdrop-blur-sm"
+                  style={TYPOGRAPHY_CONFIG.body}
                 />
               </div>
 
               {/* Email Input */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 select-none">
+                <Typography variant="accent" className="block text-sm font-medium text-gray-700 select-none">
                   Email Address
-                </label>
+                </Typography>
                 <motion.input
                   type="email"
                   placeholder="Enter your email"
@@ -884,14 +971,15 @@ const Signup = () => {
                   focus:outline-none transition-all duration-300
                   hover:border-green-300 focus:border-green-400
                   bg-white/95 backdrop-blur-sm"
+                  style={TYPOGRAPHY_CONFIG.body}
                 />
               </div>
 
               {/* Password Input */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 select-none">
+                <Typography variant="accent" className="block text-sm font-medium text-gray-700 select-none">
                   Password
-                </label>
+                </Typography>
                 <motion.input
                   type="password"
                   placeholder="Create a strong password"
@@ -906,6 +994,7 @@ const Signup = () => {
                   focus:outline-none transition-all duration-300
                   hover:border-green-300 focus:border-green-400
                   bg-white/95 backdrop-blur-sm"
+                  style={TYPOGRAPHY_CONFIG.body}
                 />
               </div>
 
@@ -922,6 +1011,7 @@ const Signup = () => {
                 type="submit"
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-md transition-all duration-300 hover:from-green-700 hover:to-emerald-700 active:scale-95 select-none touch-manipulation"
                 style={{
+                  ...TYPOGRAPHY_CONFIG.button,
                   WebkitTapHighlightColor: 'transparent'
                 }}
               >
@@ -935,9 +1025,9 @@ const Signup = () => {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-gray-500">
+                <Typography variant="body" className="px-3 bg-white text-gray-500">
                   Already have an account?
-                </span>
+                </Typography>
               </div>
             </div>
 
@@ -947,7 +1037,10 @@ const Signup = () => {
                 <Link
                   to="/login"
                   className="text-green-700 font-semibold hover:text-green-800 inline-flex items-center gap-1 group relative select-none touch-manipulation"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  style={{ 
+                    ...TYPOGRAPHY_CONFIG.button,
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
                 >
                   <span>Login to your account</span>
                   <motion.span
@@ -963,7 +1056,7 @@ const Signup = () => {
 
             {/* Footer Note */}
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-500 select-none">
+              <Typography variant="body" className="text-xs text-gray-500 select-none">
                 By creating an account, you agree to our{' '}
                 <Link to="/terms" className="text-green-600 hover:underline touch-manipulation">
                   Terms
@@ -972,7 +1065,7 @@ const Signup = () => {
                 <Link to="/privacy" className="text-green-600 hover:underline touch-manipulation">
                   Privacy Policy
                 </Link>
-              </p>
+              </Typography>
             </div>
           </div>
 

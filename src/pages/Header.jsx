@@ -13,6 +13,92 @@ import {
 } from 'framer-motion';
 import { HiOutlineMenuAlt3, HiX, HiArrowRight, HiPlus, HiLogout, HiLogin, HiUserAdd } from 'react-icons/hi';
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
 // Optimized RippleEffect
 const RippleEffect = React.memo(({ x, y, color, isMobile }) => (
   <motion.div
@@ -240,6 +326,7 @@ const ElegantIconHover = React.memo(({ children, className = "", size = "md" }) 
         stiffness: 400,
         damping: 25
       }}
+      style={TYPOGRAPHY_CONFIG.button}
     >
       {/* Icon with color transition */}
       <motion.div
@@ -490,12 +577,14 @@ function Header() {
               prefetch="intent"
             >
               <span className="relative z-10 flex items-center gap-3 lg:gap-4">
-                <ProfessionalHoverText 
-                  className="font-medium"
-                  active={location.pathname === link.path}
-                >
-                  {link.label}
-                </ProfessionalHoverText>
+                <Typography variant="accent">
+                  <ProfessionalHoverText 
+                    className="font-medium"
+                    active={location.pathname === link.path}
+                  >
+                    {link.label}
+                  </ProfessionalHoverText>
+                </Typography>
                 
                 <ElegantIconHover size="sm">
                   <HiArrowRight className="text-emerald-400/0 group-hover:text-emerald-400 transition-colors duration-200" />
@@ -531,14 +620,17 @@ function Header() {
                 onClick={handleLogout}
                 className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white px-6 lg:px-7 py-3 lg:py-3.5 rounded-lg font-semibold transition-all duration-200 overflow-hidden"
                 aria-label="Logout"
+                style={TYPOGRAPHY_CONFIG.button}
               >
                 <span className="relative z-10 flex items-center gap-3">
                   <ElegantIconHover size="md">
                     <HiLogout className="text-white group-hover:text-emerald-100 transition-colors" />
                   </ElegantIconHover>
-                  <ProfessionalHoverText className="font-semibold">
-                    Logout
-                  </ProfessionalHoverText>
+                  <Typography variant="button">
+                    <ProfessionalHoverText className="font-semibold">
+                      Logout
+                    </ProfessionalHoverText>
+                  </Typography>
                 </span>
                 
                 {/* Hover background effect */}
@@ -563,14 +655,17 @@ function Header() {
                     to="/signin"
                     className="group relative inline-flex items-center gap-3 px-5 lg:px-6 py-3 lg:py-3.5 rounded-lg font-medium transition-all duration-200 border border-emerald-600/30 hover:border-emerald-500/50 text-emerald-300 hover:text-white bg-emerald-900/20 hover:bg-emerald-800/30"
                     prefetch="intent"
+                    style={TYPOGRAPHY_CONFIG.button}
                   >
                     <ElegantIconHover size="md">
                       <HiUserAdd className="text-emerald-400 group-hover:text-emerald-300 transition-colors" />
                     </ElegantIconHover>
                     
-                    <ProfessionalHoverText className="font-semibold">
-                      Sign Up
-                    </ProfessionalHoverText>
+                    <Typography variant="button">
+                      <ProfessionalHoverText className="font-semibold">
+                        Sign Up
+                      </ProfessionalHoverText>
+                    </Typography>
                   </Link>
                 </motion.div>
               </PremiumHoverCard>
@@ -583,14 +678,17 @@ function Header() {
                     to="/login"
                     className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white px-6 lg:px-7 py-3 lg:py-3.5 rounded-lg font-semibold transition-all duration-200 overflow-hidden"
                     prefetch="intent"
+                    style={TYPOGRAPHY_CONFIG.button}
                   >
                     <span className="relative z-10 flex items-center gap-3">
                       <ElegantIconHover size="md">
                         <HiLogin className="text-white group-hover:text-emerald-100 transition-colors" />
                       </ElegantIconHover>
-                      <ProfessionalHoverText className="font-semibold">
-                        Log In
-                      </ProfessionalHoverText>
+                      <Typography variant="button">
+                        <ProfessionalHoverText className="font-semibold">
+                          Log In
+                        </ProfessionalHoverText>
+                      </Typography>
                     </span>
                     
                     <motion.div
@@ -674,7 +772,9 @@ function Header() {
                       )}
                     </div>
                     
-                    <span className="text-sm font-medium flex-1">{link.label}</span>
+                    <Typography variant="accent" className="text-sm font-medium flex-1">
+                      {link.label}
+                    </Typography>
                     
                     <motion.div
                       className="opacity-0 group-hover:opacity-100"
@@ -710,9 +810,12 @@ function Header() {
                         });
                       }}
                       className="w-full bg-gradient-to-r from-emerald-700 to-green-700 text-white py-3 rounded-lg font-semibold active:scale-95 transition-transform flex items-center justify-center gap-3"
+                      style={TYPOGRAPHY_CONFIG.button}
                     >
                       <HiLogout className="w-5 h-5" />
-                      Logout
+                      <Typography variant="button">
+                        Logout
+                      </Typography>
                     </button>
                   </motion.div>
                 ) : (
@@ -726,9 +829,12 @@ function Header() {
                         to="/signin"
                         onClick={() => requestAnimationFrame(() => setMenuOpen(false))}
                         className="group block w-full text-center text-emerald-300 font-medium py-3 rounded-lg border border-emerald-600/30 active:scale-95 transition-transform bg-emerald-900/20 flex items-center justify-center gap-3"
+                        style={TYPOGRAPHY_CONFIG.button}
                       >
                         <HiUserAdd className="w-5 h-5" />
-                        Sign Up
+                        <Typography variant="button">
+                          Sign Up
+                        </Typography>
                       </Link>
                     </motion.div>
                     
@@ -741,9 +847,12 @@ function Header() {
                         to="/login"
                         onClick={() => requestAnimationFrame(() => setMenuOpen(false))}
                         className="group block w-full text-center bg-gradient-to-r from-emerald-700 to-green-700 text-white py-3 rounded-lg font-semibold active:scale-95 transition-transform flex items-center justify-center gap-3"
+                        style={TYPOGRAPHY_CONFIG.button}
                       >
                         <HiLogin className="w-5 h-5" />
-                        Log In
+                        <Typography variant="button">
+                          Log In
+                        </Typography>
                       </Link>
                     </motion.div>
                   </>
@@ -799,7 +908,7 @@ function Header() {
         </motion.div>
 
         <div className="relative">
-          <motion.h1
+          <Typography variant="heading" as={motion.h1}
             className={`font-bold text-white ${isMobile ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl md:text-4xl'}`}
             style={{
               letterSpacing: '0.05em',
@@ -815,7 +924,7 @@ function Header() {
             <ProfessionalHoverText className="font-extrabold tracking-tight text-2xl sm:text-3xl md:text-4xl">
               PureScan
             </ProfessionalHoverText>
-          </motion.h1>
+          </Typography>
           
           <motion.div
             className={`bg-emerald-500 rounded-full ${isMobile ? 'h-0.5' : 'h-1'}`}
@@ -932,6 +1041,7 @@ function Header() {
                 aria-label="Toggle menu"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.9 }}
+                style={TYPOGRAPHY_CONFIG.button}
               >
                 <AnimatePresence mode="wait">
                   {menuOpen ? (

@@ -5,6 +5,157 @@ import { NutritionScore } from "./NutritionScore";
 import { motion, AnimatePresence } from "framer-motion";
 import { isFoodBarcode } from '../utils/barcodeValidator';
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// Typing Animation Component (Updated with new fonts)
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// MAIN COMPONENT CODE
+// ============================================
+
 // Lazy load heavy components
 const Scanner = lazy(() => import('../components/Scanner'));
 const FoodResultCard = lazy(() => import("./FoodResultCard"));
@@ -28,7 +179,9 @@ const LoadingIndicator = memo(({ barcode }) => {
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Fetching Product Data</h3>
+        <Typography variant="subheading" className="text-gray-800 mb-2 font-bold">
+          <TypingAnimation text="Fetching Product Data" speed={40} variant="subheading" />
+        </Typography>
         <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
           <motion.div 
             className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full"
@@ -39,9 +192,9 @@ const LoadingIndicator = memo(({ barcode }) => {
             }}
           />
         </div>
-        <p className="text-gray-600 text-sm mb-2">
+        <Typography variant="body" className="text-gray-600 text-sm mb-2">
           Searching for: <span className="font-mono font-bold text-green-700">{barcode}</span>
-        </p>
+        </Typography>
         <div className="flex space-x-1">
           {dots.map((dot) => (
             <motion.span
@@ -82,10 +235,11 @@ const WarningMessage = memo(({ warning, onRetry }) => (
         ⚠️
       </motion.span>
       <div className="text-left">
-        <p className="text-yellow-800 font-medium mb-2">{warning}</p>
+        <Typography variant="accent" className="text-yellow-800 font-medium mb-2">{warning}</Typography>
         <button 
           onClick={onRetry}
           className="text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow hover:shadow-md active:scale-95"
+          style={TYPOGRAPHY_CONFIG.button}
         >
           Scan Again
         </button>
@@ -111,17 +265,20 @@ const ProductNotFound = memo(({ barcode, onReset }) => (
       >
         ❌
       </motion.span>
-      <h3 className="text-lg font-bold text-red-700 mb-2">Product Not Found</h3>
-      <p className="text-gray-600 mb-4 text-sm text-center">
+      <Typography variant="subheading" className="text-red-700 mb-2 font-bold">
+        Product Not Found
+      </Typography>
+      <Typography variant="body" className="text-gray-600 mb-4 text-sm text-center">
         We couldn't find this product in our database.
-      </p>
+      </Typography>
       <div className="bg-white p-4 rounded-lg border border-gray-300 mb-4 w-full">
-        <p className="text-sm text-gray-500 mb-1">Scanned Barcode:</p>
-        <p className="font-mono font-bold text-xl text-gray-800">{barcode}</p>
+        <Typography variant="accent" className="text-sm text-gray-500 mb-1">Scanned Barcode:</Typography>
+        <Typography variant="body" className="font-mono font-bold text-xl text-gray-800">{barcode}</Typography>
       </div>
       <button 
         onClick={onReset}
         className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95 font-medium w-full"
+        style={TYPOGRAPHY_CONFIG.button}
       >
         Scan Another Product
       </button>
@@ -146,17 +303,20 @@ const IncompleteData = memo(({ barcode, onReset }) => (
       >
         ⚠️
       </motion.span>
-      <h3 className="text-lg font-bold text-yellow-700 mb-2">Limited Data Available</h3>
-      <p className="text-gray-600 mb-3 text-sm text-center">
+      <Typography variant="subheading" className="text-yellow-700 mb-2 font-bold">
+        Limited Data Available
+      </Typography>
+      <Typography variant="body" className="text-gray-600 mb-3 text-sm text-center">
         This product has incomplete nutrition information in our database.
-      </p>
+      </Typography>
       <div className="bg-white p-4 rounded-lg border border-gray-300 mb-4 w-full">
-        <p className="text-sm text-gray-500 mb-1">Scanned Barcode:</p>
-        <p className="font-mono font-bold text-xl text-gray-800">{barcode}</p>
+        <Typography variant="accent" className="text-sm text-gray-500 mb-1">Scanned Barcode:</Typography>
+        <Typography variant="body" className="font-mono font-bold text-xl text-gray-800">{barcode}</Typography>
       </div>
       <button 
         onClick={onReset}
         className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95 font-medium w-full"
+        style={TYPOGRAPHY_CONFIG.button}
       >
         Scan Another Product
       </button>
@@ -192,15 +352,15 @@ const StatusIndicator = memo(({ isLoading, saved, barcode }) => {
           )}
         </div>
         <div className="text-left">
-          <p className="text-sm text-gray-500">Status</p>
-          <p className="font-medium text-gray-800">
+          <Typography variant="accent" className="text-sm text-gray-500">Status</Typography>
+          <Typography variant="body" className="font-medium text-gray-800">
             {statusText}
-          </p>
+          </Typography>
         </div>
       </div>
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-500">Barcode:</span>
-        <span className="font-mono font-medium bg-gray-200 px-2 py-1 rounded">{barcode}</span>
+        <Typography variant="accent" className="text-gray-500">Barcode:</Typography>
+        <Typography variant="body" className="font-mono font-medium bg-gray-200 px-2 py-1 rounded">{barcode}</Typography>
       </div>
     </motion.div>
   );
@@ -217,9 +377,9 @@ const HelpText = memo(() => (
     className="mt-6 text-sm text-gray-500 max-w-md w-full"
   >
     <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-100">
-      <p className="font-medium text-blue-700 mb-2 flex items-center gap-2">
+      <Typography variant="accent" className="text-blue-700 mb-2 flex items-center gap-2">
         <span>📋</span> How to use:
-      </p>
+      </Typography>
       <ul className="text-left space-y-2">
         {[
           "Point camera at product barcode",
@@ -234,7 +394,7 @@ const HelpText = memo(() => (
             transition={{ delay: 0.7 + idx * 0.1 }}
           >
             <span className="text-blue-500">•</span>
-            <span>{item}</span>
+            <Typography variant="body" className="text-sm">{item}</Typography>
           </motion.li>
         ))}
       </ul>
@@ -249,7 +409,7 @@ const ScannerPlaceholder = memo(() => (
   <div className="w-full max-w-md h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center animate-pulse">
     <div className="text-center">
       <div className="text-3xl mb-2">📷</div>
-      <div className="text-gray-500">Loading scanner...</div>
+      <Typography variant="body" className="text-gray-500">Loading scanner...</Typography>
     </div>
   </div>
 ));
@@ -554,7 +714,7 @@ const FoodScan = memo(({ scanType }) => {
           animate={{ opacity: 1 }}
           className="mt-3 text-sm text-gray-500"
         >
-          Align barcode within the frame to scan
+          <Typography variant="accent">Align barcode within the frame to scan</Typography>
         </motion.p>
       </div>
     )
@@ -583,12 +743,12 @@ const FoodScan = memo(({ scanType }) => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 sm:mb-8"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-700 bg-clip-text text-transparent mb-2">
+          <Typography variant="heading" className="text-2xl sm:text-3xl bg-gradient-to-r from-green-600 to-emerald-700 bg-clip-text text-transparent mb-2">
             Scan a Product
-          </h1>
-          <p className="text-gray-600 text-sm sm:text-base max-w-md">
+          </Typography>
+          <Typography variant="body" className="text-gray-600 text-sm sm:text-base max-w-md">
             Point your camera at a barcode to scan and analyze nutritional information.
-          </p>
+          </Typography>
         </motion.div>
 
         <AnimatePresence mode="wait">

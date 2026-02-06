@@ -10,6 +10,157 @@ import {
   useReducedMotion
 } from 'framer-motion';
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM (ABOUT US PAGE)
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// Typing Animation Component (Updated with new fonts)
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// EXISTING CODE CONTINUES BELOW
+// ============================================
+
 // ULTRA OPTIMIZED PREMIUM DEVICE DETECTION HOOK
 const usePremiumDeviceDetection = () => {
   const [device, setDevice] = useState({
@@ -117,6 +268,18 @@ const PREMIUM_EASING = {
   mobileEase: [0.25, 0.46, 0.45, 0.94],
   hoverEase: [0.4, 0, 0.2, 1],
   smoothBounce: [0.68, -0.55, 0.265, 1.55]
+};
+
+// THROTTLE UTILITY FUNCTION (FIXED)
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
 };
 
 // ENHANCED MICROINTERACTION WITH MORE ANIMATIONS
@@ -396,11 +559,11 @@ const PremiumParticleBackground = React.memo(({ isMobile, isTablet, reducedMotio
   );
 });
 
-// ENHANCED SCROLL PROGRESS WITH ANIMATION
+// ENHANCED SCROLL PROGRESS WITH ANIMATION (FIXED)
 const PremiumScrollProgress = React.memo(({ scrollYProgress }) => {
   return (
     <motion.div
-      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left pointer-events-none"
+      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left pointer-events-none bg-green-500/20"
       style={{ 
         scaleX: scrollYProgress,
         transform: 'translate3d(0,0,0)',
@@ -886,19 +1049,9 @@ const PremiumStat = React.memo(({ value, label, color, index, isMobile, reducedM
       >
         {value}
       </motion.div>
-      <motion.div 
-        className={`text-gray-600 ${isMobile ? 'text-xs sm:text-sm' : 'text-sm'}`}
-        animate={isHovered ? {
-          color: [color, '#374151', color],
-          scale: [1, 1.05, 1]
-        } : {}}
-        transition={{
-          duration: 1,
-          ease: "easeInOut"
-        }}
-      >
+      <div className={`text-gray-600 ${isMobile ? 'text-xs sm:text-sm' : 'text-sm'}`}>
         {label}
-      </motion.div>
+      </div>
       
       {/* Particle burst on hover */}
       {isHovered && !reducedMotion && (
@@ -944,7 +1097,165 @@ const PremiumStat = React.memo(({ value, label, color, index, isMobile, reducedM
   );
 });
 
-// MAIN ABOUT US COMPONENT WITH ENHANCED ANIMATIONS
+// CUSTOM ANTIGRAVITY CURSOR
+const CustomAntigravityCursor = React.memo(({ mousePosition, isHovering, isMobile, reducedMotion }) => {
+  if (isMobile || reducedMotion) return null;
+
+  return (
+    <motion.div
+      className="fixed pointer-events-none z-50 will-change-transform"
+      style={{
+        left: `${mousePosition.x}px`,
+        top: `${mousePosition.y}px`,
+      }}
+      animate={{
+        scale: isHovering ? 1.5 : 1,
+        opacity: isHovering ? 0.7 : 0.3,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 500,
+        damping: 28
+      }}
+    >
+      <div className="relative">
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-green-500"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.5, 0.8, 0.5],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '24px',
+            height: '24px',
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+        
+        <motion.div
+          className="absolute rounded-full bg-green-500"
+          animate={{
+            scale: [1, 0.8, 1],
+          }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '6px',
+            height: '6px',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+        
+        <motion.div
+          className="absolute rounded-full"
+          animate={{
+            scale: [1, 1.5, 1],
+            opacity: [0.2, 0, 0.2],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '40px',
+            height: '40px',
+            left: '50%',
+            top: '50%',
+            background: 'radial-gradient(circle, rgba(34,197,94,0.4), transparent 70%)',
+            transform: 'translate(-50%, -50%)',
+            filter: 'blur(8px)'
+          }}
+        />
+      </div>
+    </motion.div>
+  );
+});
+
+// ENHANCED HOVER EFFECT COMPONENT
+const AntigravityHoverEffect = React.memo(({ children, intensity = 1, isMobile, reducedMotion }) => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const ref = useRef(null);
+
+  const handleMouseMove = useCallback(throttle((e) => {
+    if (isMobile || reducedMotion) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * intensity * 20;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * intensity * 20;
+    setMousePosition({ x, y });
+  }, 16), [isMobile, reducedMotion, intensity]);
+
+  return (
+    <motion.div
+      ref={ref}
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setMousePosition({ x: 0, y: 0 });
+      }}
+      onMouseMove={handleMouseMove}
+      animate={{
+        rotateY: isHovered ? mousePosition.x : 0,
+        rotateX: isHovered ? -mousePosition.y : 0,
+        scale: isHovered ? 1.02 : 1,
+        transition: { 
+          type: "spring", 
+          stiffness: 400, 
+          damping: 30,
+          mass: 0.5
+        }
+      }}
+      style={{
+        transformStyle: 'preserve-3d',
+        perspective: '1000px'
+      }}
+    >
+      {children}
+      
+      {isHovered && !isMobile && !reducedMotion && (
+        <>
+          <motion.div
+            className="absolute inset-0 rounded-3xl pointer-events-none"
+            animate={{
+              background: `radial-gradient(600px circle at ${50 + mousePosition.x}% ${50 + mousePosition.y}%, rgba(16,185,129,0.1), transparent 50%)`,
+            }}
+            transition={{ duration: 0.3 }}
+          />
+          
+          <motion.div
+            className="absolute inset-0 rounded-3xl pointer-events-none"
+            style={{
+              background: 'linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)',
+              backgroundSize: '200% 200%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 0%', '200% 200%'],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        </>
+      )}
+    </motion.div>
+  );
+});
+
+// MAIN ABOUT US COMPONENT WITH FIXED SCROLLING
 const AboutUs = () => {
   const containerRef = useRef(null);
   const contentRef = useRef(null);
@@ -955,18 +1266,18 @@ const AboutUs = () => {
   const [isScrolling, setIsScrolling] = useState(false);
   const [scrollVelocity, setScrollVelocity] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
   
   const device = usePremiumDeviceDetection();
   const { isMobile, isTablet, isDesktop, touchCapable, reducedMotion, highRefreshRate, dataSaver, canHover } = device;
   
-  const { scrollYProgress } = useScroll({ 
-    target: contentRef, 
-    offset: ["start start", "end end"] 
-  });
+  // FIXED: useScroll without target parameter for window scroll
+  const { scrollYProgress } = useScroll();
   
   const scrollY = useMotionValue(0);
   const scrollVelocityY = useMotionValue(0);
   
+  // Simplified animation frame
   useAnimationFrame(() => {
     const currentTime = performance.now();
     
@@ -1053,8 +1364,8 @@ const AboutUs = () => {
           lastX = (e.clientX - rect.left) / rect.width - 0.5;
           lastY = (e.clientY - rect.top) / rect.height - 0.5;
           setMousePosition({
-            x: (e.clientX - rect.left) / rect.width * 100,
-            y: (e.clientY - rect.top) / rect.height * 100
+            x: e.clientX,
+            y: e.clientY
           });
           animationId = null;
         });
@@ -1147,12 +1458,9 @@ const AboutUs = () => {
       return newArray;
     });
     
-    // Add particle burst effect
-    if (!reducedMotion && !dataSaver) {
-      setTimeout(() => {
-        setRipples(prev => prev.filter(r => r.id !== newRipple.id));
-      }, 900);
-    }
+    setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
+    }, 900);
   }, [isMobile, isTablet, reducedMotion, dataSaver]);
   
   // Enhanced movement tracking
@@ -1171,7 +1479,50 @@ const AboutUs = () => {
       });
     }
   }, [reducedMotion]);
-  
+
+  // Hover detection for interactive elements
+  useEffect(() => {
+    const handleElementHover = (e) => {
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.hover-effect')) {
+        setIsHovering(true);
+      } else {
+        setIsHovering(false);
+      }
+    };
+    
+    if (!isMobile) {
+      const throttledHover = throttle(handleElementHover, 16);
+      document.addEventListener('mouseover', throttledHover, { passive: true });
+      return () => document.removeEventListener('mouseover', throttledHover);
+    }
+  }, [isMobile]);
+
+  // Enhanced scroll interaction
+  useEffect(() => {
+    let scrollTimeout;
+    
+    const handleScroll = () => {
+      setIsScrolling(true);
+      
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      scrollTimeout = setTimeout(() => {
+        setIsScrolling(false);
+      }, 150);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, []);
+
   // Data sections with enhanced animations
   const sections = useMemo(() => [
     { 
@@ -1225,15 +1576,9 @@ const AboutUs = () => {
               >
                 {item.icon}
               </motion.span>
-              <motion.span 
-                className="text-gray-600 flex-1"
-                whileHover={!reducedMotion ? {
-                  color: "#10B981",
-                  transition: { duration: 0.3 }
-                } : {}}
-              >
+              <span className="text-gray-600 flex-1">
                 {item.text}
-              </motion.span>
+              </span>
             </motion.div>
           ))}
         </div>
@@ -1266,8 +1611,8 @@ const AboutUs = () => {
   useEffect(() => {
     if (!heroTrailRef.current || reducedMotion || isMobile || touchCapable) return;
     
-    heroTrailRef.current.style.left = `${mousePosition.x}%`;
-    heroTrailRef.current.style.top = `${mousePosition.y}%`;
+    heroTrailRef.current.style.left = `${mousePosition.x}px`;
+    heroTrailRef.current.style.top = `${mousePosition.y}px`;
   }, [mousePosition, reducedMotion, isMobile, touchCapable]);
   
   // Cleanup
@@ -1286,12 +1631,14 @@ const AboutUs = () => {
       onTouchStart={handleInteraction}
       onTouchMove={handleMove}
       onMouseMove={!isMobile ? handleMove : undefined}
-      className="relative min-h-screen w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 font-sans cursor-default overflow-hidden"
+      className="relative w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 cursor-default"
       style={{
         WebkitTapHighlightColor: 'transparent',
         WebkitOverflowScrolling: 'touch',
         overscrollBehavior: 'contain',
-        transform: 'translate3d(0,0,0)'
+        transform: 'translate3d(0,0,0)',
+        position: 'relative',
+        minHeight: '100vh'
       }}
       data-performance-optimized="true"
       data-reduced-motion={reducedMotion}
@@ -1332,11 +1679,21 @@ const AboutUs = () => {
         dataSaver={dataSaver}
       />
       
+      {/* Custom Cursor */}
+      {!reducedMotion && !isMobile && !touchCapable && (
+        <CustomAntigravityCursor 
+          mousePosition={mousePosition} 
+          isHovering={isHovering}
+          isMobile={isMobile}
+          reducedMotion={reducedMotion}
+        />
+      )}
+      
       {/* Mouse trail for hero section */}
       {!reducedMotion && !isMobile && !touchCapable && (
         <div
           ref={heroTrailRef}
-          className="absolute pointer-events-none rounded-full z-20 transition-all duration-200 ease-out"
+          className="fixed pointer-events-none rounded-full z-20 transition-all duration-200 ease-out"
           style={{
             width: '100px',
             height: '100px',
@@ -1366,11 +1723,7 @@ const AboutUs = () => {
       {/* Main Content Container */}
       <div 
         ref={contentRef}
-        className="relative z-10 flex-grow w-full overflow-visible"
-        style={{
-          WebkitOverflowScrolling: 'touch',
-          scrollBehavior: reducedMotion ? 'auto' : 'smooth'
-        }}
+        className="relative z-10 flex-grow w-full"
       >
         <motion.div
           style={{ 
@@ -1385,7 +1738,7 @@ const AboutUs = () => {
           }}
           className="text-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 w-full max-w-full"
         >
-          {/* Enhanced Hero Section */}
+          {/* Enhanced Hero Section with AntigravityHoverEffect */}
           <motion.section
             style={{ 
               y: heroYSpring,
@@ -1394,90 +1747,95 @@ const AboutUs = () => {
             }}
             className="max-w-4xl mx-auto mb-12 sm:mb-16 relative"
           >
-            <motion.div
-              className="text-center"
-              whileHover={(!reducedMotion && canHover) ? { 
-                scale: 1.01,
-                transition: PREMIUM_SPRINGS.hover
-              } : undefined}
-            >
-              <motion.h1
-                animate={reducedMotion || dataSaver ? {} : {
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                }}
-                transition={reducedMotion || dataSaver ? {} : {
-                  duration: 15,
-                  repeat: Infinity,
-                  ease: "linear"
-                }}
-                className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-6xl'} mb-6`}
-                style={{
-                  background: dataSaver ? '#10B981' : 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
-                  backgroundSize: dataSaver ? 'auto' : '400% 400%',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                  willChange: reducedMotion ? 'auto' : 'background-position'
-                }}
-                whileHover={!reducedMotion && canHover ? {
-                  scale: 1.02,
-                  transition: { duration: 0.3, ease: "easeInOut" }
-                } : {}}
-              >
-                About Us
-              </motion.h1>
-              
+            <AntigravityHoverEffect intensity={1.2} isMobile={isMobile} reducedMotion={reducedMotion}>
               <motion.div
-                className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mb-8 h-1"
-                initial={{ width: 0 }}
-                animate={{ width: "200px" }}
-                transition={{ 
-                  duration: reducedMotion ? 0 : 1.5, 
-                  delay: 0.5,
-                  ease: PREMIUM_EASING.easeOutQuint
-                }}
-                whileHover={!reducedMotion && canHover ? {
-                  scaleX: 1.2,
-                  transition: { duration: 0.3 }
-                } : {}}
-              />
-              
-              <motion.p
-                animate={reducedMotion || dataSaver ? {} : { 
-                  opacity: [0.95, 1, 0.95]
-                }}
-                transition={reducedMotion || dataSaver ? {} : { 
-                  duration: 3, 
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className={`text-gray-700 max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : isTablet ? 'text-xl' : 'text-2xl'}`}
-                whileHover={!reducedMotion && canHover ? {
+                className="text-center"
+                whileHover={(!reducedMotion && canHover) ? { 
                   scale: 1.01,
-                  transition: { duration: 0.3 }
-                } : {}}
+                  transition: PREMIUM_SPRINGS.hover
+                } : undefined}
               >
-                PureScan is built to help people make better food choices. 
-                <motion.span 
-                  className="block mt-3 text-green-600 font-semibold"
-                  animate={!reducedMotion ? {
-                    scale: [1, 1.02, 1]
-                  } : {}}
-                  transition={{
-                    duration: 2,
+                <motion.h1
+                  animate={reducedMotion || dataSaver ? {} : {
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                  }}
+                  transition={reducedMotion || dataSaver ? {} : {
+                    duration: 15,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "linear"
+                  }}
+                  className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-6xl'} mb-6`}
+                  style={TYPOGRAPHY_CONFIG.heading}
+                  style={{
+                    ...TYPOGRAPHY_CONFIG.heading,
+                    background: dataSaver ? '#10B981' : 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+                    backgroundSize: dataSaver ? 'auto' : '400% 400%',
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    color: 'transparent',
+                    willChange: reducedMotion ? 'auto' : 'background-position'
                   }}
                   whileHover={!reducedMotion && canHover ? {
-                    color: "#059669",
-                    scale: 1.05,
-                    transition: { duration: 0.3 }
+                    scale: 1.02,
+                    transition: { duration: 0.3, ease: "easeInOut" }
                   } : {}}
                 >
-                  Your health companion in every scan.
-                </motion.span>
-              </motion.p>
-            </motion.div>
+                  <TypingAnimation text="About Us" speed={70} variant="heading" className="block" />
+                </motion.h1>
+                
+                <motion.div
+                  className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mb-8 h-1"
+                  initial={{ width: 0 }}
+                  animate={{ width: "200px" }}
+                  transition={{ 
+                    duration: reducedMotion ? 0 : 1.5, 
+                    delay: 0.5,
+                    ease: PREMIUM_EASING.easeOutQuint
+                  }}
+                  whileHover={!reducedMotion && canHover ? {
+                    scaleX: 1.2,
+                    transition: { duration: 0.3 }
+                  } : {}}
+                />
+                
+                <Typography 
+                  variant="body" 
+                  className={`max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : isTablet ? 'text-xl' : 'text-2xl'}`}
+                >
+                  <span>
+                    <TypingAnimation 
+                      text="PureScan is built to help people make better food choices." 
+                      speed={30} 
+                      variant="body"
+                    />
+                  </span>
+                  <motion.span 
+                    className="block mt-3 text-green-600 font-semibold"
+                    style={TYPOGRAPHY_CONFIG.accent}
+                    animate={!reducedMotion ? {
+                      scale: [1, 1.02, 1]
+                    } : {}}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    whileHover={!reducedMotion && canHover ? {
+                      color: "#059669",
+                      scale: 1.05,
+                      transition: { duration: 0.3 }
+                    } : {}}
+                  >
+                    <TypingAnimation 
+                      text="Your health companion in every scan." 
+                      speed={40} 
+                      delay={1500}
+                      variant="accent"
+                    />
+                  </motion.span>
+                </Typography>
+              </motion.div>
+            </AntigravityHoverEffect>
           </motion.section>
           
           {/* Enhanced Introductory Cards */}
@@ -1495,19 +1853,9 @@ const AboutUs = () => {
                 canHover={canHover}
                 className="mb-6"
               >
-                <motion.p 
-                  className="text-gray-600 leading-relaxed text-center"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.2 }}
-                  whileHover={!reducedMotion && canHover ? {
-                    scale: 1.01,
-                    transition: { duration: 0.3 }
-                  } : {}}
-                >
-                  {text}
-                </motion.p>
+                <Typography variant="body" className="text-gray-600 leading-relaxed text-center">
+                  <TypingAnimation text={text} speed={30} delay={idx * 500} variant="body" />
+                </Typography>
               </PremiumCard>
             ))}
           </div>
@@ -1526,6 +1874,7 @@ const AboutUs = () => {
               >
                 <motion.h2 
                   className="font-bold text-green-800 text-center mb-6 text-xl sm:text-2xl"
+                  style={TYPOGRAPHY_CONFIG.subheading}
                   initial={{ opacity: 0, y: -10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -1536,30 +1885,18 @@ const AboutUs = () => {
                     transition: { duration: 0.3 }
                   } : {}}
                 >
-                  {section.title}
+                  <TypingAnimation text={section.title} speed={40} delay={idx * 100} variant="subheading" />
                 </motion.h2>
                 
-                <motion.div 
-                  className="text-gray-600 leading-relaxed"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 }}
-                >
+                <div className="text-gray-600 leading-relaxed">
                   {typeof section.content === "string" ? (
-                    <motion.p 
-                      className="text-center"
-                      whileHover={!reducedMotion && canHover ? {
-                        scale: 1.01,
-                        transition: { duration: 0.3 }
-                      } : {}}
-                    >
-                      {section.content}
-                    </motion.p>
+                    <div className="text-center">
+                      <TypingAnimation text={section.content} speed={30} delay={idx * 150} variant="body" />
+                    </div>
                   ) : (
                     section.content
                   )}
-                </motion.div>
+                </div>
               </PremiumCard>
             ))}
           </div>
@@ -1577,13 +1914,14 @@ const AboutUs = () => {
                 damping: 25
               }}
               className={`font-bold text-green-700 mb-8 text-center ${isMobile ? 'text-xl' : 'text-2xl'}`}
+              style={TYPOGRAPHY_CONFIG.subheading}
               whileHover={!reducedMotion && canHover ? {
                 scale: 1.05,
                 color: "#047857",
                 transition: { duration: 0.3 }
               } : {}}
             >
-              Our Impact
+              <TypingAnimation text="Our Impact" speed={40} variant="subheading" />
             </motion.h3>
             
             <div className={`grid ${isMobile ? 'grid-cols-2 gap-4' : 'grid-cols-4 gap-6'} text-center`}>
@@ -1620,13 +1958,17 @@ const AboutUs = () => {
               canHover={canHover}
               className="text-center"
             >
-              <h3 className="text-xl sm:text-2xl font-bold text-green-800 mb-4">
-                Join Our Health Revolution
-              </h3>
-              <p className="text-gray-600 leading-relaxed mb-6">
-                Be part of a growing community that values health, transparency, and smart choices. 
-                Start your journey towards better eating habits today.
-              </p>
+              <Typography variant="subheading" className="text-green-800 text-center mb-4 text-xl sm:text-2xl font-bold">
+                <TypingAnimation text="Join Our Health Revolution" speed={40} variant="subheading" />
+              </Typography>
+              <Typography variant="body" className="text-gray-600 leading-relaxed mb-6">
+                <TypingAnimation 
+                  text="Be part of a growing community that values health, transparency, and smart choices. Start your journey towards better eating habits today." 
+                  speed={30} 
+                  delay={500}
+                  variant="body"
+                />
+              </Typography>
               <motion.div
                 whileHover={!reducedMotion ? { 
                   scale: 1.05,
@@ -1637,7 +1979,8 @@ const AboutUs = () => {
               >
                 <motion.a
                   href="/"
-                  className="group relative inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold overflow-hidden px-6 py-3 text-base shadow-lg sm:px-8 sm:py-4 sm:text-lg"
+                  className="group relative inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold overflow-hidden px-6 py-3 shadow-lg sm:px-8 sm:py-4"
+                  style={TYPOGRAPHY_CONFIG.button}
                   data-no-ripple="true"
                   whileHover={!reducedMotion ? {
                     scale: 1.1,
@@ -1645,7 +1988,6 @@ const AboutUs = () => {
                     transition: { duration: 0.3 }
                   } : {}}
                 >
-                  {/* Animated background on hover */}
                   <motion.span
                     className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-500"
                     initial={{ x: '-100%' }}
@@ -1664,16 +2006,17 @@ const AboutUs = () => {
                     }}
                     className="text-xl relative z-10"
                   >
-                    
+                    ✨
                   </motion.span>
                   <motion.span 
-                    className="relative z-10"
+                    className="relative z-10 text-base sm:text-lg"
+                    style={TYPOGRAPHY_CONFIG.button}
                     whileHover={!reducedMotion ? {
                       scale: 1.1,
                       transition: { duration: 0.2 }
                     } : {}}
                   >
-                    Back to Home
+                    <TypingAnimation text="Back to Home" speed={30} delay={200} variant="button" />
                   </motion.span>
                   
                   {/* Particle effect on hover */}

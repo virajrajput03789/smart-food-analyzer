@@ -3,6 +3,92 @@ import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
 import { FaInstagram, FaTwitter, FaLinkedin } from "react-icons/fa";
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
 // Memoized Social Icon Component
 const SocialIcon = React.memo(({ icon, to, index }) => (
   <motion.div
@@ -29,6 +115,7 @@ const QuickLink = React.memo(({ link }) => (
     <NavLink
       to={link.to}
       className="hover:text-green-400 transition-colors duration-200 text-sm inline-block py-1"
+      style={TYPOGRAPHY_CONFIG.body}
     >
       {link.name}
     </NavLink>
@@ -76,16 +163,20 @@ const Footer = React.memo(() => {
         
         {/* Brand + tagline */}
         <div className="space-y-3">
-          <h2 className="text-xl font-bold text-white tracking-wide">PureScan</h2>
-          <p className="text-sm leading-relaxed text-gray-400">
+          <Typography variant="heading" className="text-xl font-bold text-white tracking-wide">
+            PureScan
+          </Typography>
+          <Typography variant="body" className="text-sm leading-relaxed text-gray-400">
             Making your daily products safer with PureScan scanning. <br />
             Scan. Learn. Stay Healthy.
-          </p>
+          </Typography>
         </div>
 
         {/* Quick Links */}
         <div>
-          <h3 className="text-sm font-semibold text-white mb-3">Quick Links</h3>
+          <Typography variant="subheading" className="text-sm font-semibold text-white mb-3">
+            Quick Links
+          </Typography>
           <ul className="space-y-2 text-sm">
             {quickLinks.map((link) => (
               <QuickLink key={link.to} link={link} />
@@ -95,8 +186,12 @@ const Footer = React.memo(() => {
 
         {/* Social / App Info */}
         <div>
-          <h3 className="text-sm font-semibold text-white mb-3">Stay Connected</h3>
-          <p className="text-sm text-gray-400">Follow us for updates and new features.</p>
+          <Typography variant="subheading" className="text-sm font-semibold text-white mb-3">
+            Stay Connected
+          </Typography>
+          <Typography variant="body" className="text-sm text-gray-400">
+            Follow us for updates and new features.
+          </Typography>
 
           <motion.div
             className="flex justify-center sm:justify-start gap-4 mt-3"
@@ -111,7 +206,9 @@ const Footer = React.memo(() => {
 
       {/* Bottom note */}
       <div className="mt-10 text-center text-xs text-gray-500">
-        &copy; {currentYear} PureScan. All rights reserved.
+        <Typography variant="body" className="text-xs text-gray-500">
+          &copy; {currentYear} PureScan. All rights reserved.
+        </Typography>
       </div>
     </motion.footer>
   );

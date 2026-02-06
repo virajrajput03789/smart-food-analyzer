@@ -1,5 +1,156 @@
 import { motion } from "framer-motion";
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, memo, useEffect } from "react";
+
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// Typing Animation Component (Updated with new fonts)
+const TypingAnimation = memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// MAIN COMPONENT CODE
+// ============================================
 
 // Memoized components to prevent unnecessary re-renders
 const InfoRow = memo(({ label, value }) => (
@@ -9,8 +160,8 @@ const InfoRow = memo(({ label, value }) => (
     whileTap={{ scale: 0.98 }}
     initial={false}
   >
-    <span className="font-medium group-hover:text-green-900 transition-colors duration-200">{label}</span>
-    <span className="font-bold group-hover:scale-110 transition-transform duration-200">{value}</span>
+    <Typography variant="accent" className="group-hover:text-green-900 transition-colors duration-200">{label}</Typography>
+    <Typography variant="accent" className="font-bold group-hover:scale-110 transition-transform duration-200">{value}</Typography>
   </motion.div>
 ));
 InfoRow.displayName = 'InfoRow';
@@ -33,10 +184,10 @@ const ImpactRow = memo(({ label, value, max = 20, positive = false }) => {
       initial={false}
     >
       <div className="flex justify-between text-sm mb-1">
-        <span className="text-gray-700 group-hover:text-gray-900 transition-colors duration-200 font-medium">{label}</span>
-        <span className={`font-bold ${positive ? "text-green-700 group-hover:text-green-800" : "text-red-700 group-hover:text-red-800"} transition-colors duration-200 group-hover:scale-110`}>
+        <Typography variant="accent" className="text-gray-700 group-hover:text-gray-900 transition-colors duration-200">{label}</Typography>
+        <Typography variant="accent" className={`font-bold ${positive ? "text-green-700 group-hover:text-green-800" : "text-red-700 group-hover:text-red-800"} transition-colors duration-200 group-hover:scale-110`}>
           {sign}{abs}
-        </span>
+        </Typography>
       </div>
       <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden group-hover:bg-gray-200 transition-colors duration-300 shadow-inner">
         <motion.div
@@ -47,9 +198,9 @@ const ImpactRow = memo(({ label, value, max = 20, positive = false }) => {
           whileHover={{ scaleY: 1.2 }}
         />
       </div>
-      <div className="text-xs text-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <Typography variant="body" className="text-xs text-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         {positive ? "Good for health" : "Limit consumption"}
-      </div>
+      </Typography>
     </motion.div>
   );
 });
@@ -166,10 +317,10 @@ const ScoreRing = memo(({ score, grade }) => {
         >
           {score}
         </motion.span>
-        <span className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-200">/100</span>
-        <span className={`text-xs sm:text-sm font-bold ${grade === 'C' ? 'text-black group-hover:text-gray-900' : 'text-white'} mt-1 transition-colors duration-200 group-hover:scale-110`}>
+        <Typography variant="body" className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-200">/100</Typography>
+        <Typography variant="accent" className={`text-xs sm:text-sm font-bold ${grade === 'C' ? 'text-black group-hover:text-gray-900' : 'text-white'} mt-1 transition-colors duration-200 group-hover:scale-110`}>
           {grade}
-        </span>
+        </Typography>
       </div>
     </motion.div>
   );
@@ -221,12 +372,12 @@ const ExplanationCard = memo(({ explanation, index }) => {
           {explanation.emoji}
         </motion.span>
         <div className="flex-1">
-          <p className={`font-medium mb-1 ${headerStyles[explanation.type]} transition-colors duration-200`}>
+          <Typography variant="accent" className={`mb-1 ${headerStyles[explanation.type]} transition-colors duration-200`}>
             {explanation.text.split(' - ')[0]}
-          </p>
-          <p className={`text-sm ${textStyles[explanation.type]} transition-colors duration-200 opacity-90 group-hover:opacity-100`}>
+          </Typography>
+          <Typography variant="body" className={`text-sm ${textStyles[explanation.type]} transition-colors duration-200 opacity-90 group-hover:opacity-100`}>
             {explanation.text.split(' - ')[1] || explanation.text}
-          </p>
+          </Typography>
         </div>
         <motion.div
           className={`w-2 h-2 rounded-full mt-2 ${
@@ -507,7 +658,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
         transition={{ delay: 0.1 }}
         className="mb-4"
       >
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-green-700 flex items-center gap-2 sm:gap-3 group cursor-pointer">
+        <Typography variant="heading" className="text-xl sm:text-2xl md:text-3xl text-green-700 flex items-center gap-2 sm:gap-3 group cursor-pointer">
           <motion.span 
             className="text-lg sm:text-xl md:text-2xl"
             whileHover={{ rotate: 360 }}
@@ -524,7 +675,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
               Product name not available
             </span>
           )}
-        </h2>
+        </Typography>
       </motion.div>
 
       {/* Product Image Section - Optimized with lazy loading */}
@@ -561,12 +712,12 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           >
             📷
           </motion.span>
-          <span className="text-gray-500 font-medium group-hover:text-gray-600 transition-colors duration-300 text-center px-4">
+          <Typography variant="accent" className="text-gray-500 group-hover:text-gray-600 transition-colors duration-300 text-center px-4">
             Product image not available
-          </span>
-          <span className="text-gray-400 text-sm mt-2 group-hover:text-gray-500 transition-colors duration-300">
+          </Typography>
+          <Typography variant="body" className="text-gray-400 text-sm mt-2 group-hover:text-gray-500 transition-colors duration-300">
             Click to upload or scan another
-          </span>
+          </Typography>
         </motion.div>
       )}
 
@@ -584,9 +735,9 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           </div>
           
           <div className="w-full lg:w-1/2">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 hover:text-gray-900 transition-colors duration-200 group-hover:scale-105 inline-block">
-              Nutrition Breakdown
-            </h3>
+            <Typography variant="subheading" className="text-lg sm:text-xl text-gray-800 mb-3 hover:text-gray-900 transition-colors duration-200 group-hover:scale-105 inline-block">
+              <TypingAnimation text="Nutrition Breakdown" speed={40} variant="subheading" />
+            </Typography>
             <div className="space-y-3">
               {score?.breakdown && (
                 <>
@@ -600,7 +751,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
                       className="text-red-600 text-sm font-bold hover:text-red-700 transition-colors duration-200 p-2 bg-red-50 rounded-lg inline-block"
                       whileHover={{ scale: 1.05 }}
                     >
-                      ⚠️ Penalty: -{score.breakdown.penalty} points
+                      <Typography variant="accent">⚠️ Penalty: -{score.breakdown.penalty} points</Typography>
                     </motion.div>
                   )}
                 </>
@@ -632,9 +783,9 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
         transition={{ duration: 0.5 }}
         className="space-y-4 mb-6"
       >
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 hover:text-gray-900 transition-colors duration-200">
-          🥦 Detailed Nutrition Analysis
-        </h3>
+        <Typography variant="subheading" className="text-lg sm:text-xl text-gray-800 mb-3 hover:text-gray-900 transition-colors duration-200">
+          <TypingAnimation text="🥦 Detailed Nutrition Analysis" speed={40} variant="subheading" />
+        </Typography>
 
         {/* Positive Points */}
         {positiveExplanations.length > 0 && (
@@ -646,9 +797,9 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">✅</span>
-              <h4 className="font-bold text-green-700 hover:text-green-800 transition-colors duration-200">
+              <Typography variant="subheading" className="text-green-700 hover:text-green-800 transition-colors duration-200">
                 Health Benefits & Positive Aspects
-              </h4>
+              </Typography>
             </div>
             {positiveExplanations.map((explanation, idx) => (
               <ExplanationCard key={`positive-${idx}`} explanation={explanation} index={idx} />
@@ -666,9 +817,9 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">⚠️</span>
-              <h4 className="font-bold text-red-700 hover:text-red-800 transition-colors duration-200">
+              <Typography variant="subheading" className="text-red-700 hover:text-red-800 transition-colors duration-200">
                 Areas of Concern & Recommendations
-              </h4>
+              </Typography>
             </div>
             {warningExplanations.map((explanation, idx) => (
               <ExplanationCard key={`warning-${idx}`} explanation={explanation} index={idx} />
@@ -686,9 +837,9 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl">ℹ️</span>
-              <h4 className="font-bold text-blue-700 hover:text-blue-800 transition-colors duration-200">
+              <Typography variant="subheading" className="text-blue-700 hover:text-blue-800 transition-colors duration-200">
                 Additional Information & Context
-              </h4>
+              </Typography>
             </div>
             {neutralExplanations.map((explanation, idx) => (
               <ExplanationCard key={`neutral-${idx}`} explanation={explanation} index={idx} />
@@ -705,12 +856,12 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
       >
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-center sm:text-left">
-            <p className="text-lg sm:text-xl font-bold group-hover:text-gray-100 transition-colors duration-200">
-              🥕 Overall Nutrition Grade
-            </p>
-            <p className="text-sm opacity-90 group-hover:opacity-100 transition-opacity duration-200">
+            <Typography variant="subheading" className="text-lg sm:text-xl group-hover:text-gray-100 transition-colors duration-200">
+              <TypingAnimation text="🥕 Overall Nutrition Grade" speed={40} variant="subheading" />
+            </Typography>
+            <Typography variant="body" className="text-sm opacity-90 group-hover:opacity-100 transition-opacity duration-200">
               Comprehensive analysis with vegetable-based recommendations
-            </p>
+            </Typography>
           </div>
           <motion.div
             className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl text-xl sm:text-2xl font-bold min-w-[80px] text-center cursor-pointer shadow-lg ${
@@ -730,7 +881,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
             {score?.grade || 'N/A'}
           </motion.div>
         </div>
-        <p className="text-sm mt-3 opacity-90 group-hover:opacity-100 transition-opacity duration-200 text-center sm:text-left">
+        <Typography variant="body" className="text-sm mt-3 opacity-90 group-hover:opacity-100 transition-opacity duration-200 text-center sm:text-left">
           Score: <span className="font-bold">{score?.value || 0}</span>/100 • {
             score?.grade === 'A' ? 'Excellent choice for regular consumption! 🥦' :
             score?.grade === 'B' ? 'Good option with balanced nutrition 🥕' :
@@ -738,7 +889,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
             score?.grade === 'D' ? 'Poor - limit consumption, focus on vegetables 🥒' :
             'Very poor - avoid when possible, choose fresh vegetables instead 🥗'
           }
-        </p>
+        </Typography>
       </motion.div>
 
       <motion.button
@@ -750,6 +901,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
         whileTap={{ scale: 0.95 }}
         onClick={onReset}
         className="mt-8 w-full text-base font-semibold px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 group will-change-transform touch-manipulation"
+        style={TYPOGRAPHY_CONFIG.button}
       >
         <motion.span
           whileHover={{ rotate: 180 }}
@@ -759,7 +911,7 @@ const FoodResultCard = ({ score, image, productName, nutrients, onReset }) => {
           🔄
         </motion.span>
         <span className="group-hover:scale-105 transition-transform duration-300">
-          Scan Another Product
+          <TypingAnimation text="Scan Another Product" speed={30} variant="accent" />
         </span>
       </motion.button>
     </motion.div>

@@ -1,5 +1,5 @@
 // Ultra Optimized Privacy Policy Component with Zero Lag
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo, Suspense } from "react";
 import { Link } from "react-router-dom";
 import {
   motion,
@@ -7,36 +7,150 @@ import {
   useTransform,
   useSpring,
   useMotionValue,
-  animate,
   AnimatePresence
 } from "framer-motion";
-import Particles from 'react-tsparticles';
-import { loadSlim } from 'tsparticles-slim';
 
-// Performance Monitoring Hook (Dev only)
-const usePerformanceMonitor = () => {
+// Typing Animation Component
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0 }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      let frameCount = 0;
-      let lastTime = performance.now();
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
       
-      const checkFPS = () => {
-        frameCount++;
-        const currentTime = performance.now();
-        if (currentTime >= lastTime + 1000) {
-          const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-          if (fps < 50) {
-            console.warn(`Performance Warning: FPS dropped to ${fps}`);
-          }
-          frameCount = 0;
-          lastTime = currentTime;
-        }
-        requestAnimationFrame(checkFPS);
-      };
-      
-      requestAnimationFrame(checkFPS);
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
     }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  return (
+    <span className={`inline-flex items-center ${className}`}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+    </span>
+  );
+});
+
+// Device Detection Hook
+const usePremiumDeviceDetection = () => {
+  const [device, setDevice] = useState({
+    isMobile: false,
+    isTablet: false,
+    isDesktop: true,
+    touchCapable: false,
+    reducedMotion: false,
+    highRefreshRate: false,
+    canHover: true
+  });
+  
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      const isMobile = width < 768;
+      const isTablet = width >= 768 && width < 1024;
+      const isDesktop = width >= 1024;
+      const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const highRefreshRate = window.matchMedia('(min-resolution: 192dpi)').matches;
+      const canHover = window.matchMedia('(hover: hover)').matches;
+      
+      setDevice({
+        isMobile,
+        isTablet,
+        isDesktop,
+        touchCapable,
+        reducedMotion,
+        highRefreshRate,
+        canHover
+      });
+    };
+    
+    checkDevice();
+    
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(checkDevice, 100);
+    };
+    
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const hoverQuery = window.matchMedia('(hover: hover)');
+    
+    const handleMotionChange = () => checkDevice();
+    
+    motionQuery.addEventListener('change', handleMotionChange);
+    hoverQuery.addEventListener('change', handleMotionChange);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      motionQuery.removeEventListener('change', handleMotionChange);
+      hoverQuery.removeEventListener('change', handleMotionChange);
+      clearTimeout(resizeTimeout);
+    };
   }, []);
+  
+  return device;
+};
+
+// Premium Spring Configurations
+const PREMIUM_SPRINGS = {
+  ultraSmooth: { stiffness: 200, damping: 35, mass: 0.5, restDelta: 0.0001, restSpeed: 0.0001 },
+  smooth: { stiffness: 180, damping: 30, mass: 0.6, restDelta: 0.0001, restSpeed: 0.0001 },
+  responsive: { stiffness: 160, damping: 28, mass: 0.7, restDelta: 0.001, restSpeed: 0.001 },
+  bouncy: { stiffness: 220, damping: 25, mass: 0.5, restDelta: 0.001, restSpeed: 0.001 },
+  mobile: { stiffness: 150, damping: 30, mass: 0.7, restDelta: 0.005, restSpeed: 0.005 },
+  hover: { stiffness: 400, damping: 25, mass: 0.3, restDelta: 0.0001, restSpeed: 0.0001 }
+};
+
+// Premium Easing Curves
+const PREMIUM_EASING = {
+  easeOutExpo: [0.16, 1, 0.3, 1],
+  easeOutCirc: [0, 0.55, 0.45, 1],
+  easeOutBack: [0.34, 1.56, 0.64, 1],
+  easeOutQuint: [0.22, 1, 0.36, 1],
+  premiumEnter: [0.32, 0.94, 0.6, 1],
+  premiumExit: [0.76, 0, 0.24, 1],
+  mobileEase: [0.25, 0.46, 0.45, 0.94],
+  hoverEase: [0.4, 0, 0.2, 1],
+  smoothBounce: [0.68, -0.55, 0.265, 1.55]
 };
 
 // Optimized Micro Interaction Component
@@ -89,11 +203,43 @@ const MicroInteraction = React.memo(({ type, x, y, color, isMobile }) => {
 
 MicroInteraction.displayName = 'MicroInteraction';
 
+// Premium Scroll Progress Component
+const PremiumScrollProgress = React.memo(({ scrollYProgress }) => {
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left will-change-transform bg-green-500/20"
+      style={{ 
+        scaleX: scrollYProgress,
+        transform: 'translate3d(0,0,0)'
+      }}
+    >
+      <motion.div
+        className="h-full w-full"
+        animate={{
+          backgroundPosition: ['0% 0%', '100% 0%']
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{
+          background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+          backgroundSize: '400% 100%',
+          willChange: 'background-position'
+        }}
+      />
+    </motion.div>
+  );
+});
+
 // Optimized Interactive Background
-const InteractiveBackground = React.memo(({ isMobile }) => {
+const InteractiveBackground = React.memo(({ isMobile, reducedMotion }) => {
   const [interactions, setInteractions] = useState([]);
   
   useEffect(() => {
+    if (reducedMotion) return;
+    
     const interval = setInterval(() => {
       if (Math.random() > 0.7 && interactions.length < (isMobile ? 3 : 6)) {
         const type = Math.random() > 0.5 ? 'sparkle' : 'pulse';
@@ -120,15 +266,17 @@ const InteractiveBackground = React.memo(({ isMobile }) => {
     }, isMobile ? 1500 : 1000);
     
     return () => clearInterval(interval);
-  }, [isMobile]);
+  }, [isMobile, reducedMotion, interactions.length]);
   
   useEffect(() => {
+    if (reducedMotion) return;
+    
     const cleanupInterval = setInterval(() => {
       setInteractions(prev => prev.filter(int => Date.now() - int.id < 2000));
     }, 1000);
     
     return () => clearInterval(cleanupInterval);
-  }, []);
+  }, [reducedMotion]);
   
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -143,64 +291,99 @@ const InteractiveBackground = React.memo(({ isMobile }) => {
 
 InteractiveBackground.displayName = 'InteractiveBackground';
 
+// Premium Background Orbs
+const PremiumBackgroundOrbs = React.memo(({ isMobile, isTablet, reducedMotion }) => {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+      <motion.div
+        className={`absolute ${isMobile ? '-top-20 -left-20' : '-top-40 -left-40'} ${
+          isMobile ? 'w-[25rem] h-[25rem]' : 'w-[35rem] h-[35rem]'
+        } rounded-full pointer-events-none gpu-accelerated`}
+        animate={reducedMotion ? {} : {
+          opacity: [isMobile ? 0.06 : 0.1, isMobile ? 0.1 : 0.15, isMobile ? 0.06 : 0.1],
+          scale: [1, isMobile ? 1.03 : 1.05, 1],
+          rotate: [0, 180, 360]
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{
+          background: 'radial-gradient(circle, rgba(16,185,129,0.2), rgba(34,197,94,0.15), transparent 70%)',
+          filter: 'blur(80px)',
+          willChange: 'transform, opacity'
+        }}
+      />
+      
+      <motion.div
+        className={`absolute ${isMobile ? '-right-10 -bottom-10' : '-right-20 -bottom-20'} ${
+          isMobile ? 'w-[20rem] h-[20rem]' : 'w-[25rem] h-[25rem]'
+        } rounded-full pointer-events-none gpu-accelerated`}
+        animate={reducedMotion ? {} : {
+          opacity: [isMobile ? 0.05 : 0.08, isMobile ? 0.08 : 0.12, isMobile ? 0.05 : 0.08],
+          scale: [1, isMobile ? 1.02 : 1.03, 1],
+          rotate: [0, -180, -360]
+        }}
+        transition={reducedMotion ? {} : {
+          duration: 18,
+          repeat: Infinity,
+          ease: "linear",
+          delay: 0.5
+        }}
+        style={{
+          background: 'radial-gradient(circle, rgba(253,224,71,0.15), rgba(34,197,94,0.1), transparent 70%)',
+          filter: 'blur(70px)',
+          willChange: 'transform, opacity'
+        }}
+      />
+    </div>
+  );
+});
+
 // Optimized Section Component
-const Section = React.memo(({ title, children, isMobile, index }) => {
+const Section = React.memo(({ title, children, isMobile, index, reducedMotion, canHover }) => {
   const [isHovered, setIsHovered] = useState(false);
   
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
       whileInView={{ 
         opacity: 1, 
         y: 0, 
-        scale: 1,
-        transition: { 
-          type: "spring",
-          stiffness: isMobile ? 80 : 100,
-          damping: isMobile ? 25 : 20,
-          delay: index * 0.1,
-          mass: 0.5
-        }
+        scale: 1
       }}
       viewport={{ once: true, margin: "-50px" }}
-      onMouseEnter={() => !isMobile && setIsHovered(true)}
-      onMouseLeave={() => !isMobile && setIsHovered(false)}
-      whileHover={!isMobile ? {
+      transition={{ 
+        delay: index * 0.1,
+        duration: reducedMotion ? 0 : 0.6,
+        ease: PREMIUM_EASING.premiumEnter
+      }}
+      whileHover={(!reducedMotion && canHover) ? {
         y: -10,
         scale: 1.02,
         boxShadow: "0px 25px 70px rgba(16,185,129,0.25)",
-        transition: { type: "spring", stiffness: 200, damping: 15, mass: 0.3 }
+        transition: PREMIUM_SPRINGS.hover
       } : undefined}
       whileTap={isMobile ? { scale: 0.98 } : undefined}
+      onHoverStart={() => !reducedMotion && canHover && setIsHovered(true)}
+      onHoverEnd={() => !reducedMotion && canHover && setIsHovered(false)}
       className="group relative cursor-pointer mb-6 will-change-transform"
       style={{ transform: 'translateZ(0)' }}
     >
-      {/* Card Background with Hover Effect */}
-      <motion.div
-        className="absolute inset-0 rounded-2xl gpu-accelerated"
-        animate={isHovered && !isMobile ? {
-          background: [
-            "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(220,252,231,0.7) 100%)",
-            "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(187,247,208,0.8) 100%)",
-            "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(220,252,231,0.7) 100%)"
-          ]
-        } : {}}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-300 rounded-2xl" />
-      </motion.div>
+      {/* Card Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white to-green-50/30 rounded-2xl backdrop-blur-xl border border-green-200/30 group-hover:border-green-400 transition-all duration-300 gpu-accelerated" />
       
       {/* Animated Glow on Hover */}
-      {!isMobile && (
+      {isHovered && !reducedMotion && (
         <motion.div
           className="absolute -inset-4 -z-10 rounded-2xl"
-          animate={isHovered ? {
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{
             opacity: 0.6,
             scale: 1.05,
-          } : {
-            opacity: 0,
-            scale: 1
           }}
+          exit={{ opacity: 0, scale: 1 }}
           transition={{ duration: 0.4 }}
           style={{
             background: `radial-gradient(circle at center, #10B98140, transparent 70%)`,
@@ -211,7 +394,7 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
       )}
       
       {/* Floating Icons on Hover */}
-      {!isMobile && isHovered && (
+      {isHovered && !reducedMotion && (
         <>
           <motion.div
             className="absolute -top-2 -right-2 w-6 h-6 text-lg will-change-transform"
@@ -239,11 +422,11 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
         {/* Section Header */}
         <motion.div 
           className="flex items-center gap-3 mb-3 sm:mb-4"
-          whileHover={!isMobile ? { x: 5 } : undefined}
+          whileHover={(!reducedMotion && canHover) ? { x: 5 } : undefined}
         >
           <motion.div
             className="w-2 h-6 sm:h-8 rounded-full bg-gradient-to-b from-green-500 to-emerald-500 will-change-transform"
-            animate={isHovered && !isMobile ? {
+            animate={(isHovered && !reducedMotion) ? {
               scaleY: [1, 1.5, 1],
               opacity: [0.7, 1, 0.7]
             } : {}}
@@ -251,44 +434,52 @@ const Section = React.memo(({ title, children, isMobile, index }) => {
             style={{ transform: 'translateZ(0)' }}
           />
           <motion.h2 
-            animate={isHovered && !isMobile ? {
+            animate={(isHovered && !reducedMotion) ? {
               scale: 1.03,
               x: 3,
             } : {}}
             className="font-bold text-green-800 text-lg sm:text-xl"
           >
-            {title}
+            <TypingAnimation text={title} speed={40} delay={index * 100} />
           </motion.h2>
         </motion.div>
         
         {/* Section Content */}
-        <motion.div 
-          className="text-gray-600 leading-relaxed text-sm sm:text-base"
-          animate={isHovered && !isMobile ? {
-            x: 3,
-            color: "#374151"
-          } : {}}
-        >
-          {typeof children === "string" ? (
-            <p className="hover:text-green-700 transition-colors duration-300">{children}</p>
-          ) : (
+        <div className="text-gray-600 leading-relaxed text-sm sm:text-base">
+          {Array.isArray(children) ? (
             <ul className="list-disc pl-5 sm:pl-6 space-y-1 sm:space-y-2">
-              {React.Children.map(children, (child, idx) => (
+              {children.map((item, itemIdx) => (
                 <motion.li
-                  key={idx}
+                  key={itemIdx}
                   className="hover:text-green-700 transition-colors duration-300"
-                  whileHover={!isMobile ? {
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 + itemIdx * 0.05 }}
+                  whileHover={(!reducedMotion && canHover) ? {
                     x: 3,
                     scale: 1.01
                   } : undefined}
                   style={{ transform: 'translateZ(0)' }}
                 >
-                  {child}
+                  <TypingAnimation text={item} speed={30} delay={index * 150 + itemIdx * 50} />
                 </motion.li>
               ))}
             </ul>
+          ) : (
+            <motion.p 
+              className="hover:text-green-700 transition-colors duration-300"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={(!reducedMotion && canHover) ? {
+                x: 3,
+                color: "#374151"
+              } : undefined}
+            >
+              <TypingAnimation text={children} speed={30} delay={index * 100} />
+            </motion.p>
           )}
-        </motion.div>
+        </div>
       </div>
     </motion.div>
   );
@@ -367,369 +558,157 @@ const RippleEffect = React.memo(({ ripple }) => {
 
 RippleEffect.displayName = 'RippleEffect';
 
-// Optimized AnimatePresence Wrapper
-const OptimizedAnimatePresence = React.memo(({ children, isMobile }) => (
-  <AnimatePresence mode="wait">
-    {React.Children.map(children, child => 
-      React.isValidElement(child) ? React.cloneElement(child, { isMobile }) : child
-    )}
-  </AnimatePresence>
-));
-
-OptimizedAnimatePresence.displayName = 'OptimizedAnimatePresence';
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
+// Throttle Utility Function
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
 };
 
 const PrivacyPolicy = () => {
-  usePerformanceMonitor();
-  
   const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  
   const [ripples, setRipples] = useState([]);
-  const [hoverGlow, setHoverGlow] = useState({ x: 0, y: 0, active: false });
-  const [isMobile, setIsMobile] = useState(false);
   const [touchPosition, setTouchPosition] = useState({ x: 0, y: 0 });
-  const [cardHover, setCardHover] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
-  // Refs for performance optimization
-  const animationFrameRef = useRef(null);
-  const lastInteractionTime = useRef(0);
-  const interactionThrottleDelay = useRef(150); // ms between interactions
-  const lastResizeTime = useRef(0);
-  const lastSparkleTime = useRef(0);
-
-  // Optimized mobile detection with throttling
-  useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      
-      if (mobile !== isMobile) {
-        setIsMobile(mobile);
-      }
-    };
-    
-    checkMobile();
-    
-    const handleResize = () => {
-      const now = Date.now();
-      if (now - lastResizeTime.current > 200) {
-        lastResizeTime.current = now;
-        checkMobile();
-      }
-    };
-    
-    window.addEventListener('resize', handleResize, { passive: true });
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isMobile]);
-
-  // Enhanced mouse tracking
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  // Optimized scroll animations
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
+  const device = usePremiumDeviceDetection();
+  const { isMobile, isTablet, reducedMotion, touchCapable, canHover } = device;
   
-  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, isMobile ? 0.98 : 0.95]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, isMobile ? 0.9 : 0.8]);
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, isMobile ? -20 : -40]);
+  // Fixed: useScroll without target parameter
+  const { scrollYProgress } = useScroll();
   
-  const contentYSpring = useSpring(contentY, { 
-    stiffness: isMobile ? 150 : 180, 
-    damping: isMobile ? 32 : 28,
-    mass: 0.5
-  });
-  const heroScaleSpring = useSpring(heroScale, { 
-    stiffness: isMobile ? 180 : 200, 
-    damping: isMobile ? 40 : 35,
-    mass: 0.5
-  });
-
-  // Optimized ripple effect handler with throttling
+  const scrollY = useMotionValue(0);
+  
+  // Scroll-based animations
+  const heroY = useTransform(
+    scrollY,
+    [0, 500],
+    [0, isMobile ? -15 : -30]
+  );
+  
+  const heroOpacity = useTransform(
+    scrollY,
+    [0, 300],
+    [1, isMobile ? 0.97 : 0.95]
+  );
+  
+  const heroScale = useTransform(
+    scrollY,
+    [0, 500],
+    [1, isMobile ? 0.995 : 0.99]
+  );
+  
+  const currentSpring = isMobile ? PREMIUM_SPRINGS.mobile : 
+                       isTablet ? PREMIUM_SPRINGS.responsive : 
+                       PREMIUM_SPRINGS.ultraSmooth;
+  
+  const heroYSpring = useSpring(heroY, currentSpring);
+  const heroScaleSpring = useSpring(heroScale, currentSpring);
+  
+  // Ripple effect with cooldown
+  const rippleCooldownRef = useRef(false);
+  const rippleTimeoutRef = useRef(null);
+  
   const handleInteraction = useCallback((e) => {
-    const now = Date.now();
-    if (now - lastInteractionTime.current < interactionThrottleDelay.current) return;
-    lastInteractionTime.current = now;
+    if (rippleCooldownRef.current || reducedMotion) return;
+    
+    rippleCooldownRef.current = true;
+    
+    if (rippleTimeoutRef.current) {
+      clearTimeout(rippleTimeoutRef.current);
+    }
+    
+    rippleTimeoutRef.current = setTimeout(() => {
+      rippleCooldownRef.current = false;
+    }, isMobile ? 250 : 180);
     
     if (
-      e.target.tagName === 'INPUT' ||
-      e.target.tagName === 'TEXTAREA' ||
-      e.target.tagName === 'SELECT' ||
       e.target.closest('button') ||
       e.target.closest('a') ||
+      e.target.closest('input') ||
+      e.target.closest('textarea') ||
+      e.target.closest('select') ||
       e.target.closest('[data-no-ripple]')
     ) {
       return;
     }
-
+    
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-
-    let clientX, clientY;
-    if (e.type.includes('touch')) {
-      const touch = e.touches?.[0] || e.changedTouches?.[0];
-      if (!touch) return;
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
+    
+    const x = (e.clientX || e.touches?.[0]?.clientX || e.changedTouches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY || e.changedTouches?.[0]?.clientY) - rect.top;
+    
+    if (!x || !y) return;
+    
     const colors = [
-      'rgba(16, 185, 129, 0.6)',
-      'rgba(52, 211, 153, 0.6)',
-      'rgba(34, 197, 94, 0.6)',
-      'rgba(5, 150, 105, 0.6)'
+      'rgba(16, 185, 129, 0.8)',
+      'rgba(52, 211, 153, 0.8)',
+      'rgba(34, 197, 94, 0.8)'
     ];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-
+    
     const newRipple = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       x,
       y,
-      color,
+      color: colors[Math.floor(Math.random() * colors.length)],
       type: 'ripple',
+      size: isMobile ? 0.7 : isTablet ? 0.85 : 1,
       isMobile
     };
-
+    
     setRipples(prev => {
-      const newRipples = [...prev, newRipple];
-      return newRipples.slice(-(isMobile ? 4 : 6));
+      const newArray = [...prev.slice(-2), newRipple];
+      return newArray;
     });
-
+    
     setTimeout(() => {
       setRipples(prev => prev.filter(r => r.id !== newRipple.id));
-    }, isMobile ? 900 : 1200);
-  }, [isMobile]);
-
-  // Optimized move handler with requestAnimationFrame
+    }, 900);
+  }, [isMobile, isTablet, reducedMotion]);
+  
+  // Smooth movement tracking
   const handleMove = useCallback((e) => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    animationFrameRef.current = requestAnimationFrame(() => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      let clientX, clientY;
-      if (e.type.includes('touch')) {
-        const touch = e.touches?.[0];
-        if (!touch) return;
-        clientX = touch.clientX;
-        clientY = touch.clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      
-      setTouchPosition({ x, y });
-      
-      if (!isMobile) {
-        setHoverGlow({ x, y, active: true });
-        
-        // Create sparkles on mouse move occasionally
-        const now = Date.now();
-        if (now - lastSparkleTime.current > 300 && Math.random() > 0.8) {
-          lastSparkleTime.current = now;
-          const colors = ['#10B981', '#34D399', '#22C55E'];
-          const sparkle = {
-            id: Date.now(),
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            type: 'sparkle',
-            isMobile: false
-          };
-          
-          setRipples(prev => [...prev.slice(-8), sparkle]);
-          
-          setTimeout(() => {
-            setRipples(prev => prev.filter(r => r.id !== sparkle.id));
-          }, 600);
-        }
-      }
-    });
-  }, [isMobile]);
-
-  // Optimized mouse effects for desktop
-  useEffect(() => {
-    if (isMobile) return;
-
-    let isCancelled = false;
-
-    const onMove = (e) => {
-      if (isCancelled) return;
-      
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect || isCancelled) return;
-        
-        const nx = (e.clientX - rect.left) / rect.width - 0.5;
-        const ny = (e.clientY - rect.top) / rect.height - 0.5;
-        
-        mouseX.set(nx);
-        mouseY.set(ny);
-      });
-    };
-
-    const onLeave = () => {
-      animate(mouseX, 0, { 
-        type: "spring", 
-        stiffness: 100, 
-        damping: 15,
-        mass: 0.3 
-      });
-      animate(mouseY, 0, { 
-        type: "spring", 
-        stiffness: 100, 
-        damping: 15,
-        mass: 0.3 
-      });
-      setHoverGlow(prev => ({ ...prev, active: false }));
-    };
-
-    const node = containerRef.current;
-    if (node) {
-      node.addEventListener("pointermove", onMove, { passive: true });
-      node.addEventListener("pointerleave", onLeave);
-    }
+    if (reducedMotion) return;
     
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    
+    if (x && y) {
+      requestAnimationFrame(() => {
+        setTouchPosition({ x, y });
+      });
+    }
+  }, [reducedMotion]);
+  
+  // Cleanup
+  useEffect(() => {
     return () => {
-      isCancelled = true;
-      if (node) {
-        node.removeEventListener("pointermove", onMove);
-        node.removeEventListener("pointerleave", onLeave);
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (rippleTimeoutRef.current) {
+        clearTimeout(rippleTimeoutRef.current);
       }
     };
-  }, [isMobile, mouseX, mouseY]);
-
-  // Optimized Particle options with slim loader
-  const particleOptions = useMemo(() => ({
-    fpsLimit: isMobile ? 30 : 60,
-    particles: {
-      number: { 
-        value: isMobile ? 35 : 50,
-        density: { 
-          enable: true, 
-          value_area: isMobile ? 500 : 700 
-        } 
-      },
-      color: { 
-        value: ["#22c55e", "#10b981", "#34d399", "#059669"] 
-      },
-      shape: { 
-        type: "circle" 
-      },
-      opacity: { 
-        value: isMobile ? 0.12 : 0.15,
-        random: true,
-        animation: {
-          enable: true,
-          speed: 0.5,
-          minimumValue: 0.05
-        }
-      },
-      size: { 
-        value: isMobile ? 2 : 2.5,
-        random: true,
-        animation: {
-          enable: isMobile ? false : true,
-          speed: 2,
-          minimumValue: 1
-        }
-      },
-      move: {
-        enable: true,
-        speed: isMobile ? 0.3 : 0.4,
-        direction: "none",
-        random: true,
-        straight: false,
-        outMode: "bounce",
-      },
-      collisions: {
-        enable: false
-      }
-    },
-    interactivity: {
-      events: {
-        onhover: { 
-          enable: !isMobile, 
-          mode: "repulse",
-          parallax: { enable: false }
-        },
-        onclick: { 
-          enable: true, 
-          mode: "push" 
-        }
-      },
-      modes: {
-        repulse: {
-          distance: isMobile ? 40 : 60,
-          duration: 0.4
-        },
-        push: {
-          quantity: 2
-        }
-      }
-    },
-    detectRetina: true,
-    background: {
-      color: "transparent"
-    }
-  }), [isMobile]);
-
-  // Event handlers with passive listeners
-  const handleContainerClick = useCallback((e) => {
-    handleInteraction(e);
-  }, [handleInteraction]);
-
-  const handleContainerTouchStart = useCallback((e) => {
-    e.preventDefault();
-    handleInteraction(e);
-  }, [handleInteraction]);
-
-  const handleContainerTouchMove = useCallback((e) => {
-    e.preventDefault();
-    handleMove(e);
-  }, [handleMove]);
-
-  const handleContainerMouseMove = useCallback((e) => {
-    if (!isMobile) handleMove(e);
-  }, [handleMove, isMobile]);
-
-  const handleContainerMouseLeave = useCallback(() => {
-    if (!isMobile) setHoverGlow(prev => ({ ...prev, active: false }));
-  }, [isMobile]);
-
-  const handleContainerTouchEnd = useCallback(() => {
-    if (isMobile) setHoverGlow(prev => ({ ...prev, active: false }));
-  }, [isMobile]);
-
+  }, []);
+  
+  // Hover detection
+  const handleMouseEnter = useCallback(() => {
+    if (!reducedMotion && canHover) setIsHovered(true);
+  }, [reducedMotion, canHover]);
+  
+  const handleMouseLeave = useCallback(() => {
+    if (!reducedMotion && canHover) setIsHovered(false);
+  }, [reducedMotion, canHover]);
+  
   const sections = useMemo(() => [
     {
       title: "Information we collect",
@@ -764,79 +743,50 @@ const PrivacyPolicy = () => {
       content: "For privacy inquiries, contact us via the Contact page or email: purescan.helpdesk@gmail.com"
     }
   ], []);
-
-  // Cleanup ripples efficiently
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      setRipples(prev => prev.filter(r => now - r.id < 1000));
-    }, 500);
-    
-    return () => clearInterval(cleanupInterval);
-  }, []);
-
+  
   return (
     <div 
       ref={containerRef}
-      onClick={handleContainerClick}
-      onTouchStart={handleContainerTouchStart}
-      onTouchMove={handleContainerTouchMove}
-      onMouseMove={handleContainerMouseMove}
-      onMouseLeave={handleContainerMouseLeave}
-      onTouchEnd={handleContainerTouchEnd}
-      className="relative min-h-screen flex flex-col bg-gradient-to-b from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default px-4 sm:px-6 performance-optimized"
+      onClick={handleInteraction}
+      onTouchStart={handleInteraction}
+      onTouchMove={handleMove}
+      onMouseMove={!isMobile ? handleMove : undefined}
+      className="relative w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 font-sans cursor-default"
       style={{
         WebkitTapHighlightColor: 'transparent',
-        touchAction: 'pan-y',
-        overscrollBehavior: 'none'
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
+        transform: 'translate3d(0,0,0)',
+        position: 'relative',
+        minHeight: '100vh'
       }}
+      data-performance-optimized="true"
+      data-reduced-motion={reducedMotion}
+      data-device-type={isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}
     >
-      {/* Interactive Background Layer */}
-      <InteractiveBackground isMobile={isMobile} />
+      {/* Premium Scroll Progress */}
+      <PremiumScrollProgress scrollYProgress={scrollYProgress} />
       
-      {/* Optimized Particle Background with Slim */}
-      <Particles
-        className="absolute inset-0 -z-10 gpu-accelerated"
-        init={async (engine) => {
-          await loadSlim(engine);
-        }}
-        options={particleOptions}
-        key={`particles-${isMobile}`}
-      />
-
+      {/* Background Effects */}
+      <Suspense fallback={null}>
+        <InteractiveBackground 
+          isMobile={isMobile}
+          reducedMotion={reducedMotion}
+        />
+        <PremiumBackgroundOrbs 
+          isMobile={isMobile}
+          isTablet={isTablet}
+          reducedMotion={reducedMotion}
+        />
+      </Suspense>
+      
       {/* Ripple Effects Container */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
-        <OptimizedAnimatePresence isMobile={isMobile}>
+        <AnimatePresence>
           {ripples.map(ripple => (
             <RippleEffect key={ripple.id} ripple={ripple} />
           ))}
-        </OptimizedAnimatePresence>
-
-        {/* Hover Glow (Desktop only) */}
-        {!isMobile && (
-          <motion.div
-            className="absolute pointer-events-none rounded-full will-change-transform"
-            animate={{
-              scale: hoverGlow.active ? 1 : 0,
-              opacity: hoverGlow.active ? 0.2 : 0,
-              x: hoverGlow.x - 60,
-              y: hoverGlow.y - 60
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 150,
-              damping: 20,
-              mass: 0.2
-            }}
-            style={{
-              width: 120,
-              height: 120,
-              background: "radial-gradient(circle, rgba(34,197,94,0.3), rgba(16,185,129,0.1), transparent 70%)",
-              filter: "blur(15px)",
-              transform: 'translateZ(0)'
-            }}
-          />
-        )}
+        </AnimatePresence>
 
         {/* Touch/Mouse Trail Effect */}
         <motion.div
@@ -863,80 +813,41 @@ const PrivacyPolicy = () => {
         />
       </div>
 
-      {/* Background Orbs */}
-      {!isMobile && (
-        <>
-          <motion.div
-            className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full pointer-events-none gpu-accelerated"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.12,
-              scale: [1, 1.05, 1],
-            }}
-            transition={{ 
-              duration: 8, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-            style={{ transform: 'translateZ(0)' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300/40 via-emerald-300/30 to-teal-200/30 blur-[80px]" />
-          </motion.div>
-
-          <motion.div
-            className="absolute -right-20 -bottom-20 w-[25rem] h-[25rem] rounded-full pointer-events-none gpu-accelerated"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 0.1,
-              scale: [1, 1.03, 1],
-            }}
-            transition={{ 
-              duration: 7, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-            style={{ transform: 'translateZ(0)' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200/30 via-emerald-200/20 to-green-300/20 blur-[60px]" />
-          </motion.div>
-        </>
-      )}
-
       {/* Main Content */}
-      <div className="relative z-10 flex-grow py-8 sm:py-12">
+      <div 
+        ref={contentRef}
+        className="relative z-10 flex-grow w-full"
+      >
         <motion.div
           style={{ 
             scale: heroScaleSpring,
-            opacity: heroOpacity,
-            y: contentYSpring
+            opacity: heroOpacity
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="text-gray-900"
-          onMouseEnter={() => !isMobile && setCardHover(true)}
-          onMouseLeave={() => !isMobile && setCardHover(false)}
+          transition={{ 
+            duration: reducedMotion ? 0 : 0.8,
+            ease: PREMIUM_EASING.premiumEnter
+          }}
+          className="text-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8"
         >
           {/* Hero Section */}
           <motion.section
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.8 }}
+            style={{ y: heroYSpring }}
             className="max-w-4xl mx-auto mb-8 sm:mb-12 relative"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             {/* Hero Background Glow */}
-            {!isMobile && (
+            {isHovered && !reducedMotion && (
               <motion.div
                 className="absolute inset-0 -z-10 rounded-3xl"
-                animate={cardHover ? {
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{
                   opacity: [0.15, 0.25, 0.15],
                   scale: [1, 1.05, 1]
-                } : {
-                  opacity: [0.1, 0.2, 0.1],
-                  scale: [1, 1.02, 1]
                 }}
+                exit={{ opacity: 0, scale: 1 }}
                 transition={{
                   duration: 4,
                   repeat: Infinity,
@@ -952,16 +863,16 @@ const PrivacyPolicy = () => {
 
             <motion.div
               className="text-center"
-              whileHover={!isMobile ? { 
+              whileHover={(!reducedMotion && canHover) ? { 
                 scale: 1.01,
                 transition: { duration: 0.3 }
               } : undefined}
             >
               <motion.h1
-                animate={{
+                animate={reducedMotion ? {} : {
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                 }}
-                transition={{
+                transition={reducedMotion ? {} : {
                   duration: 8,
                   repeat: Infinity,
                   ease: "linear"
@@ -975,31 +886,46 @@ const PrivacyPolicy = () => {
                   backgroundClip: 'text',
                   transform: 'translateZ(0)'
                 }}
+                whileHover={(!reducedMotion && canHover) ? {
+                  scale: 1.02,
+                  transition: { duration: 0.3, ease: "easeInOut" }
+                } : {}}
               >
-                Privacy Policy
+                <TypingAnimation text="Privacy Policy" speed={70} className="block" />
               </motion.h1>
               
               {/* Animated Underline */}
               <motion.div
-                className={`bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-6 sm:mb-8 ${isMobile ? 'h-0.5' : 'h-1'}`}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-6 sm:mb-8 h-1"
                 initial={{ width: 0 }}
                 animate={{ width: "200px" }}
-                transition={{ duration: 1.5, delay: 0.5 }}
+                transition={{ 
+                  duration: reducedMotion ? 0 : 1.5, 
+                  delay: 0.5,
+                  ease: PREMIUM_EASING.easeOutQuint
+                }}
+                whileHover={(!reducedMotion && canHover) ? {
+                  scaleX: 1.2,
+                  transition: { duration: 0.3 }
+                } : {}}
               />
               
               <motion.p
-                animate={{ 
+                animate={reducedMotion ? {} : { 
                   opacity: [0.9, 1, 0.9],
                 }}
-                transition={{ 
+                transition={reducedMotion ? {} : { 
                   duration: 4, 
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
                 className={`text-gray-700 max-w-2xl mx-auto leading-relaxed ${isMobile ? 'text-base' : 'text-lg sm:text-xl'}`}
               >
-                We value your privacy. This policy explains what data we collect, 
-                how we use it, and your rights.
+                <TypingAnimation 
+                  text="We value your privacy. This policy explains what data we collect, how we use it, and your rights." 
+                  speed={30} 
+                  delay={800}
+                />
               </motion.p>
             </motion.div>
           </motion.section>
@@ -1028,63 +954,67 @@ const PrivacyPolicy = () => {
                 title={section.title}
                 isMobile={isMobile}
                 index={idx}
+                reducedMotion={reducedMotion}
+                canHover={canHover}
               >
-                {Array.isArray(section.content) ? (
-                  section.content.map((item, itemIdx) => (
-                    <li key={itemIdx}>{item}</li>
-                  ))
-                ) : (
-                  section.content
-                )}
+                {Array.isArray(section.content) ? section.content : section.content}
               </Section>
             ))}
           </motion.div>
 
           {/* Back to Home Button */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-center mt-8 sm:mt-12"
+            transition={{ 
+              duration: reducedMotion ? 0 : 0.8,
+              ease: PREMIUM_EASING.premiumEnter
+            }}
+            className="max-w-4xl mx-auto text-center mt-8 sm:mt-12"
           >
             <motion.div
-              whileHover={!isMobile ? { scale: 1.03 } : undefined}
-              whileTap={{ scale: 0.97 }}
-              className="relative inline-block"
+              whileHover={(!reducedMotion && canHover) ? { 
+                scale: 1.05,
+                transition: PREMIUM_SPRINGS.hover
+              } : undefined}
+              whileTap={touchCapable ? { scale: 0.95 } : undefined}
+              className="inline-block"
             >
               <Link
                 to="/"
-                className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full font-semibold hover:shadow-xl transition-all duration-300 overflow-hidden px-8 py-3 sm:px-10 sm:py-4 shadow-lg will-change-transform"
-                style={{ transform: 'translateZ(0)' }}
+                className="group relative inline-flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold overflow-hidden px-6 py-3 text-base shadow-lg sm:px-8 sm:py-4 sm:text-lg"
+                data-no-ripple="true"
               >
                 <motion.span
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="text-xl sm:text-2xl"
+                  className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-500"
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '100%' }}
+                  transition={{
+                    duration: 0.6,
+                    ease: "easeInOut"
+                  }}
+                />
+                <motion.span
+                  animate={!reducedMotion ? { rotate: [0, 360] } : {}}
+                  transition={reducedMotion ? {} : { 
+                    duration: 20, 
+                    repeat: Infinity, 
+                    ease: "linear"
+                  }}
+                  className="text-xl relative z-10"
                 >
                   ←
                 </motion.span>
-                <span className="relative z-10 text-sm sm:text-base">Back to Home</span>
-                
-                {/* Button Glow Effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-full"
-                  animate={{
-                    opacity: [0.2, 0.3, 0.2],
-                    scale: [1, 1.05, 1]
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  style={{
-                    background: "radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%)",
-                    filter: `blur(${isMobile ? 8 : 10}px)`,
-                    transform: 'translateZ(0)'
-                  }}
-                />
+                <motion.span 
+                  className="relative z-10"
+                  whileHover={!reducedMotion ? {
+                    scale: 1.1,
+                    transition: { duration: 0.2 }
+                  } : {}}
+                >
+                  <TypingAnimation text="Back to Home" speed={30} delay={200} />
+                </motion.span>
               </Link>
             </motion.div>
           </motion.div>

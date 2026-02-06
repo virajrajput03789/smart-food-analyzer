@@ -13,8 +13,159 @@ import {
 import emailjs from '@emailjs/browser';
 
 // ============================================
-// PREMIUM DEVICE DETECTION HOOK
+// FONT STYLES & TYPOGRAPHY SYSTEM (CONTACT US PAGE)
 // ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// ============================================
+// TYPING ANIMATION COMPONENT (NEW)
+// ============================================
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-green-400 to-emerald-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// EXISTING CODE CONTINUES BELOW (NO OTHER CHANGES)
+// ============================================
+
+// PREMIUM DEVICE DETECTION HOOK
 const usePremiumDeviceDetection = () => {
   const [device, setDevice] = useState({
     isMobile: false,
@@ -85,7 +236,9 @@ const PREMIUM_SPRINGS = {
   ultraSmooth: { stiffness: 200, damping: 35, mass: 0.5, restDelta: 0.0001, restSpeed: 0.0001 },
   smooth: { stiffness: 180, damping: 30, mass: 0.6, restDelta: 0.0001, restSpeed: 0.0001 },
   responsive: { stiffness: 160, damping: 28, mass: 0.7, restDelta: 0.001, restSpeed: 0.001 },
-  bouncy: { stiffness: 220, damping: 25, mass: 0.5, restDelta: 0.001, restSpeed: 0.001 }
+  bouncy: { stiffness: 220, damping: 25, mass: 0.5, restDelta: 0.001, restSpeed: 0.001 },
+  mobile: { stiffness: 150, damping: 30, mass: 0.7, restDelta: 0.005, restSpeed: 0.005 },
+  hover: { stiffness: 400, damping: 25, mass: 0.3, restDelta: 0.0001, restSpeed: 0.0001 }
 };
 
 // ============================================
@@ -98,7 +251,9 @@ const PREMIUM_EASING = {
   easeOutQuint: [0.22, 1, 0.36, 1],
   premiumEnter: [0.32, 0.94, 0.6, 1],
   premiumExit: [0.76, 0, 0.24, 1],
-  springy: [0.68, -0.55, 0.265, 1.55]
+  mobileEase: [0.25, 0.46, 0.45, 0.94],
+  hoverEase: [0.4, 0, 0.2, 1],
+  smoothBounce: [0.68, -0.55, 0.265, 1.55]
 };
 
 // ============================================
@@ -233,7 +388,7 @@ const PremiumInteractiveBackground = React.memo(({ isMobile, isTablet, reducedMo
 });
 
 // ============================================
-// PREMIUM PARTICLE BACKGROUND (NO TSPARTIES)
+// PREMIUM PARTICLE BACKGROUND
 // ============================================
 const PremiumParticleBackground = React.memo(({ isMobile, isTablet, reducedMotion }) => {
   const particleCount = isMobile ? 20 : isTablet ? 30 : 40;
@@ -293,18 +448,33 @@ const PremiumParticleBackground = React.memo(({ isMobile, isTablet, reducedMotio
 });
 
 // ============================================
-// PREMIUM SCROLL PROGRESS
+// PREMIUM SCROLL PROGRESS (FIXED)
 // ============================================
 const PremiumScrollProgress = React.memo(({ scrollYProgress }) => {
   return (
     <motion.div
-      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left will-change-transform"
+      className="fixed top-0 left-0 right-0 h-[3px] z-50 origin-left will-change-transform bg-green-500/20"
       style={{ 
         scaleX: scrollYProgress,
         transform: 'translate3d(0,0,0)'
       }}
     >
-      <div className="h-full w-full bg-gradient-to-r from-green-400 via-emerald-500 to-green-400" />
+      <motion.div
+        className="h-full w-full"
+        animate={{
+          backgroundPosition: ['0% 0%', '100% 0%']
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{
+          background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+          backgroundSize: '400% 100%',
+          willChange: 'background-position'
+        }}
+      />
     </motion.div>
   );
 });
@@ -454,7 +624,12 @@ const PremiumFloatingIcons = React.memo(({ isMobile, isTablet, reducedMotion }) 
         <motion.div
           key={idx}
           className={`absolute ${el.size} opacity-30`}
-          style={{ left: el.x, top: el.y }}
+          style={{ 
+            left: el.x, 
+            top: el.y,
+            willChange: 'transform, opacity',
+            transform: 'translateZ(0)'
+          }}
           animate={{
             y: [0, -15, 0],
             rotate: [0, 10, -10, 0],
@@ -463,7 +638,7 @@ const PremiumFloatingIcons = React.memo(({ isMobile, isTablet, reducedMotion }) 
           transition={{
             duration: 6 + idx,
             repeat: Infinity,
-            ease: "easeInOut",
+            ease: PREMIUM_EASING.smoothBounce,
             delay: el.delay,
             times: [0, 0.5, 1]
           }}
@@ -472,6 +647,182 @@ const PremiumFloatingIcons = React.memo(({ isMobile, isTablet, reducedMotion }) 
         </motion.div>
       ))}
     </div>
+  );
+});
+
+// ============================================
+// THROTTLE UTILITY FUNCTION
+// ============================================
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
+
+// ============================================
+// CUSTOM ANTIGRAVITY CURSOR
+// ============================================
+const CustomAntigravityCursor = React.memo(({ mousePosition, isHovering, isMobile, reducedMotion }) => {
+  if (isMobile || reducedMotion) return null;
+
+  return (
+    <motion.div
+      className="fixed pointer-events-none z-50 will-change-transform"
+      style={{
+        left: `${mousePosition.x}px`,
+        top: `${mousePosition.y}px`,
+      }}
+      animate={{
+        scale: isHovering ? 1.5 : 1,
+        opacity: isHovering ? 0.7 : 0.3,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 500,
+        damping: 28
+      }}
+    >
+      <div className="relative">
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-green-500"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.5, 0.8, 0.5],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '24px',
+            height: '24px',
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+        
+        <motion.div
+          className="absolute rounded-full bg-green-500"
+          animate={{
+            scale: [1, 0.8, 1],
+          }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '6px',
+            height: '6px',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+        
+        <motion.div
+          className="absolute rounded-full"
+          animate={{
+            scale: [1, 1.5, 1],
+            opacity: [0.2, 0, 0.2],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            width: '40px',
+            height: '40px',
+            left: '50%',
+            top: '50%',
+            background: 'radial-gradient(circle, rgba(34,197,94,0.4), transparent 70%)',
+            transform: 'translate(-50%, -50%)',
+            filter: 'blur(8px)'
+          }}
+        />
+      </div>
+    </motion.div>
+  );
+});
+
+// ============================================
+// ENHANCED HOVER EFFECT COMPONENT
+// ============================================
+const AntigravityHoverEffect = React.memo(({ children, intensity = 1, isMobile, reducedMotion }) => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const ref = useRef(null);
+
+  const handleMouseMove = useCallback(throttle((e) => {
+    if (isMobile || reducedMotion) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * intensity * 20;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * intensity * 20;
+    setMousePosition({ x, y });
+  }, 16), [isMobile, reducedMotion, intensity]);
+
+  return (
+    <motion.div
+      ref={ref}
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setMousePosition({ x: 0, y: 0 });
+      }}
+      onMouseMove={handleMouseMove}
+      animate={{
+        rotateY: isHovered ? mousePosition.x : 0,
+        rotateX: isHovered ? -mousePosition.y : 0,
+        scale: isHovered ? 1.02 : 1,
+        transition: { 
+          type: "spring", 
+          stiffness: 400, 
+          damping: 30,
+          mass: 0.5
+        }
+      }}
+      style={{
+        transformStyle: 'preserve-3d',
+        perspective: '1000px'
+      }}
+    >
+      {children}
+      
+      {isHovered && !isMobile && !reducedMotion && (
+        <>
+          <motion.div
+            className="absolute inset-0 rounded-3xl pointer-events-none"
+            animate={{
+              background: `radial-gradient(600px circle at ${50 + mousePosition.x}% ${50 + mousePosition.y}%, rgba(16,185,129,0.1), transparent 50%)`,
+            }}
+            transition={{ duration: 0.3 }}
+          />
+          
+          <motion.div
+            className="absolute inset-0 rounded-3xl pointer-events-none"
+            style={{
+              background: 'linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)',
+              backgroundSize: '200% 200%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 0%', '200% 200%'],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        </>
+      )}
+    </motion.div>
   );
 });
 
@@ -519,7 +870,6 @@ const PremiumContactForm = React.memo(({
     }
   ], [isMobile, isTablet]);
   
-  // Updated contactInfo array with website item removed
   const contactInfo = useMemo(() => [
     { 
       icon: '📧', 
@@ -565,8 +915,8 @@ const PremiumContactForm = React.memo(({
                 ✨
               </motion.div>
               <div className="flex-1">
-                <h4 className="font-semibold text-green-700">Message Sent Successfully!</h4>
-                <p className="text-sm text-green-600">We'll get back to you within 24-48 hours.</p>
+                <Typography variant="subheading" className="text-green-700 font-semibold">Message Sent Successfully!</Typography>
+                <Typography variant="body" className="text-sm text-green-600">We'll get back to you within 24-48 hours.</Typography>
               </div>
             </div>
           </motion.div>
@@ -582,15 +932,45 @@ const PremiumContactForm = React.memo(({
             <div className="flex items-center gap-3">
               <div className="text-2xl text-red-500">⚠️</div>
               <div className="flex-1">
-                <h4 className="font-semibold text-red-700">Oops! Something went wrong</h4>
-                <p className="text-sm text-red-600">{submitError}</p>
+                <Typography variant="subheading" className="text-red-700 font-semibold">Oops! Something went wrong</Typography>
+                <Typography variant="body" className="text-sm text-red-600">{submitError}</Typography>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
       
-      
+      {/* Contact Info Cards */}
+      <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-3 gap-4'} mb-8`}>
+        {contactInfo.map((info, idx) => (
+          <motion.div
+            key={idx}
+            className={`bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-green-100/50 shadow-sm ${info.color}`}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.1 }}
+            whileHover={!reducedMotion ? {
+              y: -4,
+              scale: 1.05,
+              boxShadow: "0 10px 30px rgba(16,185,129,0.15)"
+            } : undefined}
+          >
+            <div className="text-2xl mb-2 text-green-500">{info.icon}</div>
+            <Typography variant="accent" className="text-green-700 mb-1">{info.label}</Typography>
+            {info.link ? (
+              <a 
+                href={info.link}
+                className="text-xs text-green-600 hover:text-green-700 hover:underline truncate block"
+              >
+                {info.value}
+              </a>
+            ) : (
+              <Typography variant="body" className="text-xs text-gray-600 truncate">{info.value}</Typography>
+            )}
+          </motion.div>
+        ))}
+      </div>
       
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -603,13 +983,10 @@ const PremiumContactForm = React.memo(({
             transition={{ delay: idx * 0.15 }}
             className="relative"
           >
-            <motion.label
-              htmlFor={field.id}
-              className="block text-sm font-medium text-green-700 mb-2 flex items-center gap-2"
-            >
+            <Typography as="label" variant="accent" htmlFor={field.id} className="block text-green-700 mb-2 flex items-center gap-2">
               <span>{field.icon}</span>
               {field.label}
-            </motion.label>
+            </Typography>
             
             {field.type === 'textarea' ? (
               <motion.textarea
@@ -626,6 +1003,7 @@ const PremiumContactForm = React.memo(({
                   ${focusedField === field.id ? 'shadow-lg shadow-green-200/50' : 'shadow-sm'}
                   ${submitError && !field.validation(formData[field.id]) ? 'border-red-300' : 'border-green-200'}
                 `}
+                style={TYPOGRAPHY_CONFIG.body}
                 placeholder={field.placeholder}
                 required
               />
@@ -644,6 +1022,7 @@ const PremiumContactForm = React.memo(({
                   ${focusedField === field.id ? 'shadow-lg shadow-green-200/50' : 'shadow-sm'}
                   ${submitError && !field.validation(formData[field.id]) ? 'border-red-300' : 'border-green-200'}
                 `}
+                style={TYPOGRAPHY_CONFIG.body}
                 placeholder={field.placeholder}
                 required
               />
@@ -675,12 +1054,13 @@ const PremiumContactForm = React.memo(({
           } : undefined}
           whileTap={{ scale: 0.95 }}
           className={`
-            w-full py-4 px-6 rounded-xl font-semibold text-white
+            w-full py-4 px-6 rounded-xl text-white
             bg-gradient-to-r from-green-500 to-emerald-600
             disabled:opacity-50 disabled:cursor-not-allowed
             shadow-lg shadow-green-200/50 relative overflow-hidden
             flex items-center justify-center gap-3
           `}
+          style={TYPOGRAPHY_CONFIG.button}
         >
           {isSubmitting ? (
             <>
@@ -688,7 +1068,7 @@ const PremiumContactForm = React.memo(({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span>Sending...</span>
+              <Typography variant="button">Sending...</Typography>
             </>
           ) : (
             <>
@@ -699,7 +1079,7 @@ const PremiumContactForm = React.memo(({
               >
                 ✉️
               </motion.span>
-              <span>Send Message</span>
+              <Typography variant="button">Send Message</Typography>
             </>
           )}
           
@@ -723,44 +1103,13 @@ const PremiumContactForm = React.memo(({
             />
           )}
         </motion.button>
-        {/* Contact Info Cards */}
-      <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-3 gap-4'} mb-8`}>
-        {contactInfo.map((info, idx) => (
-          <motion.div
-            key={idx}
-            className={`bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-green-100/50 shadow-sm ${info.color}`}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: idx * 0.1 }}
-            whileHover={!reducedMotion ? {
-              y: -4,
-              scale: 1.05,
-              boxShadow: "0 10px 30px rgba(16,185,129,0.15)"
-            } : undefined}
-          >
-            <div className="text-2xl mb-2 text-green-500">{info.icon}</div>
-            <div className="text-xs font-medium text-green-700 mb-1">{info.label}</div>
-            {info.link ? (
-              <a 
-                href={info.link}
-                className="text-xs text-green-600 hover:text-green-700 hover:underline truncate block"
-              >
-                {info.value}
-              </a>
-            ) : (
-              <div className="text-xs text-gray-600 truncate">{info.value}</div>
-            )}
-          </motion.div>
-        ))}
-      </div>
       </form>
     </div>
   );
 });
 
 // ============================================
-// MAIN CONTACTUS COMPONENT
+// MAIN CONTACTUS COMPONENT WITH FIXED SCROLLING
 // ============================================
 const ContactUs = () => {
   const containerRef = useRef(null);
@@ -771,6 +1120,8 @@ const ContactUs = () => {
   const [isScrolling, setIsScrolling] = useState(false);
   const [scrollVelocity, setScrollVelocity] = useState(0);
   const [floatingIcons, setFloatingIcons] = useState([]);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -782,31 +1133,21 @@ const ContactUs = () => {
   const [submitError, setSubmitError] = useState('');
   
   const device = usePremiumDeviceDetection();
-  const { isMobile, isTablet, isDesktop, reducedMotion, highRefreshRate } = device;
+  const { isMobile, isTablet, isDesktop, reducedMotion, touchCapable, canHover } = device;
   
-  // Premium scroll tracking
-  const { scrollYProgress } = useScroll({ 
-    target: contentRef, 
-    offset: ["start start", "end end"] 
-  });
+  // FIXED: useScroll without target parameter for window scroll
+  const { scrollYProgress } = useScroll();
   
-  // Enhanced scroll effects with velocity
   const scrollY = useMotionValue(0);
   const scrollVelocityY = useMotionValue(0);
   
+  // Simplified animation frame for better scrolling
   useAnimationFrame(() => {
     const currentY = window.scrollY;
-    const prevY = scrollY.get();
-    const velocity = currentY - prevY;
-    
     scrollY.set(currentY);
-    scrollVelocityY.set(velocity);
-    
-    setScrollVelocity(Math.abs(velocity));
-    setIsScrolling(Math.abs(velocity) > 0.5);
   });
   
-  // Premium scroll-based animations
+  // Enhanced scroll-based animations
   const heroY = useTransform(
     scrollY,
     [0, 500],
@@ -826,15 +1167,19 @@ const ContactUs = () => {
   );
   
   // Apply premium springs
-  const heroYSpring = useSpring(heroY, PREMIUM_SPRINGS.ultraSmooth);
-  const heroScaleSpring = useSpring(heroScale, PREMIUM_SPRINGS.ultraSmooth);
+  const currentSpring = isMobile ? PREMIUM_SPRINGS.mobile : 
+                       isTablet ? PREMIUM_SPRINGS.responsive : 
+                       PREMIUM_SPRINGS.ultraSmooth;
+  
+  const heroYSpring = useSpring(heroY, currentSpring);
+  const heroScaleSpring = useSpring(heroScale, currentSpring);
   
   // Enhanced mouse tracking for desktop
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   
   useEffect(() => {
-    if (isMobile || reducedMotion) return;
+    if (isMobile || reducedMotion || touchCapable) return;
     
     let animationId;
     let lastX = 0;
@@ -860,6 +1205,11 @@ const ContactUs = () => {
       
       lastX = (e.clientX - rect.left) / rect.width - 0.5;
       lastY = (e.clientY - rect.top) / rect.height - 0.5;
+      
+      setMousePosition({
+        x: e.clientX,
+        y: e.clientY
+      });
       
       // Create floating icons occasionally
       if (Math.random() > 0.97 && floatingIcons.length < 3) {
@@ -888,22 +1238,80 @@ const ContactUs = () => {
         node.removeEventListener('mousemove', handleMouseMove);
       }
     };
-  }, [isMobile, reducedMotion, mouseX, mouseY, floatingIcons.length]);
+  }, [isMobile, reducedMotion, touchCapable, mouseX, mouseY, floatingIcons.length]);
+  
+  // Hover detection for interactive elements
+  useEffect(() => {
+    const handleElementHover = (e) => {
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.hover-effect')) {
+        setIsHovering(true);
+      } else {
+        setIsHovering(false);
+      }
+    };
+    
+    if (!isMobile) {
+      const throttledHover = throttle(handleElementHover, 16);
+      document.addEventListener('mouseover', throttledHover, { passive: true });
+      return () => document.removeEventListener('mouseover', throttledHover);
+    }
+  }, [isMobile]);
+  
+  // Enhanced scroll interaction
+  useEffect(() => {
+    let scrollTimeout;
+    
+    const handleScroll = () => {
+      setIsScrolling(true);
+      
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      scrollTimeout = setTimeout(() => {
+        setIsScrolling(false);
+      }, 150);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, []);
   
   // Premium 3D effects
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], isMobile || reducedMotion ? [0, 0] : [6, -6]);
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], isMobile || reducedMotion ? [0, 0] : [-4, 4]);
+  const rotateY = useTransform(
+    mouseX, 
+    [-0.5, 0.5], 
+    (isMobile || reducedMotion || touchCapable) ? [0, 0] : [6, -6]
+  );
+  const rotateX = useTransform(
+    mouseY, 
+    [-0.5, 0.5], 
+    (isMobile || reducedMotion || touchCapable) ? [0, 0] : [-4, 4]
+  );
+  
   const rotateYSpring = useSpring(rotateY, PREMIUM_SPRINGS.smooth);
   const rotateXSpring = useSpring(rotateX, PREMIUM_SPRINGS.smooth);
   
-  // Optimized ripple effect
+  // Optimized ripple effect with cooldown
   const rippleCooldownRef = useRef(false);
+  const rippleTimeoutRef = useRef(null);
   
   const handleInteraction = useCallback((e) => {
     if (rippleCooldownRef.current || reducedMotion) return;
     
     rippleCooldownRef.current = true;
-    setTimeout(() => {
+    
+    if (rippleTimeoutRef.current) {
+      clearTimeout(rippleTimeoutRef.current);
+    }
+    
+    rippleTimeoutRef.current = setTimeout(() => {
       rippleCooldownRef.current = false;
     }, isMobile ? 250 : 180);
     
@@ -912,7 +1320,8 @@ const ContactUs = () => {
       e.target.closest('a') ||
       e.target.closest('input') ||
       e.target.closest('textarea') ||
-      e.target.closest('select')
+      e.target.closest('select') ||
+      e.target.closest('[data-no-ripple]')
     ) {
       return;
     }
@@ -939,7 +1348,10 @@ const ContactUs = () => {
       size: isMobile ? 0.7 : isTablet ? 0.85 : 1
     };
     
-    setRipples(prev => [...prev.slice(-2), newRipple]);
+    setRipples(prev => {
+      const newArray = [...prev.slice(-2), newRipple];
+      return newArray;
+    });
     
     setTimeout(() => {
       setRipples(prev => prev.filter(r => r.id !== newRipple.id));
@@ -957,7 +1369,9 @@ const ContactUs = () => {
     const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
     
     if (x && y) {
-      setTouchPosition({ x, y });
+      requestAnimationFrame(() => {
+        setTouchPosition({ x, y });
+      });
     }
   }, [reducedMotion]);
   
@@ -1003,7 +1417,7 @@ const ContactUs = () => {
     setIsSubmitting(true);
     
     try {
-      // EmailJS configuration - using environment variables
+      // EmailJS configuration
       const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
       const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
@@ -1066,17 +1480,13 @@ const ContactUs = () => {
     return () => clearInterval(cleanupInterval);
   }, [floatingIcons.length]);
   
-  // Environment variable debug (development only)
+  // Cleanup
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('Environment Variables Check:', {
-        mode: import.meta.env.MODE,
-        emailjsServiceId: !!import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        emailjsTemplateId: !!import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        emailjsPublicKey: !!import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
-        yourEmail: !!import.meta.env.VITE_YOUR_EMAIL
-      });
-    }
+    return () => {
+      if (rippleTimeoutRef.current) {
+        clearTimeout(rippleTimeoutRef.current);
+      }
+    };
   }, []);
 
   return (
@@ -1086,13 +1496,18 @@ const ContactUs = () => {
       onTouchStart={handleInteraction}
       onTouchMove={handleMove}
       onMouseMove={!isMobile ? handleMove : undefined}
-      className="relative min-h-screen w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 font-sans cursor-default overflow-hidden"
+      className="relative w-full flex flex-col bg-gradient-to-b from-white via-green-50/90 to-emerald-50/70 cursor-default"
       style={{
         WebkitTapHighlightColor: 'transparent',
         WebkitOverflowScrolling: 'touch',
         overscrollBehavior: 'contain',
-        transform: 'translate3d(0,0,0)'
+        transform: 'translate3d(0,0,0)',
+        position: 'relative',
+        minHeight: '100vh'
       }}
+      data-performance-optimized="true"
+      data-reduced-motion={reducedMotion}
+      data-device-type={isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}
     >
       {/* Premium Scroll Progress */}
       <PremiumScrollProgress scrollYProgress={scrollYProgress} />
@@ -1124,6 +1539,16 @@ const ContactUs = () => {
         isTablet={isTablet}
         reducedMotion={reducedMotion}
       />
+      
+      {/* Custom Cursor */}
+      {!reducedMotion && !isMobile && !touchCapable && (
+        <CustomAntigravityCursor 
+          mousePosition={mousePosition} 
+          isHovering={isHovering}
+          isMobile={isMobile}
+          reducedMotion={reducedMotion}
+        />
+      )}
       
       {/* Interactive Effects */}
       {!reducedMotion && (
@@ -1184,11 +1609,7 @@ const ContactUs = () => {
       {/* Main Content */}
       <div 
         ref={contentRef}
-        className="relative z-10 flex-grow w-full overflow-visible"
-        style={{
-          WebkitOverflowScrolling: 'touch',
-          scrollBehavior: 'smooth'
-        }}
+        className="relative z-10 flex-grow w-full"
       >
         <motion.div
           style={{ 
@@ -1203,7 +1624,7 @@ const ContactUs = () => {
           }}
           className="text-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 w-full max-w-full"
         >
-          {/* Hero Section */}
+          {/* Hero Section with AntigravityHoverEffect */}
           <motion.section
             style={{ 
               y: heroYSpring,
@@ -1212,63 +1633,95 @@ const ContactUs = () => {
             }}
             className="max-w-4xl mx-auto mb-12 sm:mb-16 relative"
           >
-            <motion.div
-              className="text-center"
-              whileHover={!reducedMotion && !isMobile ? { 
-                scale: 1.01,
-                transition: { type: "spring", stiffness: 400, damping: 30 }
-              } : undefined}
-            >
-              <motion.h1
-                animate={reducedMotion ? {} : {
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                }}
-                transition={reducedMotion ? {} : {
-                  duration: 15,
-                  repeat: Infinity,
-                  ease: "linear"
-                }}
-                className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-6xl'} mb-6`}
-                style={{
-                  background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
-                  backgroundSize: '400% 400%',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                  willChange: 'background-position'
-                }}
-              >
-                Contact Us
-              </motion.h1>
-              
+            <AntigravityHoverEffect intensity={1.2} isMobile={isMobile} reducedMotion={reducedMotion}>
               <motion.div
-                className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mb-8 h-1"
-                initial={{ width: 0 }}
-                animate={{ width: isMobile ? "150px" : "200px" }}
-                transition={{ 
-                  duration: reducedMotion ? 0 : 1.5, 
-                  delay: 0.5,
-                  ease: PREMIUM_EASING.easeOutQuint
-                }}
-              />
-              
-              <motion.p
-                animate={reducedMotion ? {} : { 
-                  opacity: [0.95, 1, 0.95]
-                }}
-                transition={reducedMotion ? {} : { 
-                  duration: 3, 
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className={`text-gray-700 max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : isTablet ? 'text-xl' : 'text-2xl'}`}
+                className="text-center"
+                whileHover={(!reducedMotion && canHover) ? { 
+                  scale: 1.01,
+                  transition: PREMIUM_SPRINGS.hover
+                } : undefined}
               >
-                Have questions, feedback, or partnership ideas? We'd love to hear from you.
-                <span className="block mt-3 text-green-600 font-semibold">
-                  Get in touch with our team.
-                </span>
-              </motion.p>
-            </motion.div>
+                <motion.h1
+                  animate={reducedMotion ? {} : {
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                  }}
+                  transition={reducedMotion ? {} : {
+                    duration: 15,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                  className={`font-bold tracking-tight ${isMobile ? 'text-4xl' : isTablet ? 'text-5xl' : 'text-6xl'} mb-6`}
+                  style={TYPOGRAPHY_CONFIG.heading}
+                  style={{
+                    ...TYPOGRAPHY_CONFIG.heading,
+                    background: 'linear-gradient(90deg, #10B981, #34D399, #22C55E, #059669, #10B981)',
+                    backgroundSize: '400% 400%',
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    color: 'transparent',
+                    willChange: 'background-position'
+                  }}
+                  whileHover={!reducedMotion && canHover ? {
+                    scale: 1.02,
+                    transition: { duration: 0.3, ease: "easeInOut" }
+                  } : {}}
+                >
+                  <TypingAnimation text="Contact Us" speed={70} variant="heading" className="block" />
+                </motion.h1>
+                
+                <motion.div
+                  className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mx-auto mb-8 h-1"
+                  initial={{ width: 0 }}
+                  animate={{ width: isMobile ? "150px" : "200px" }}
+                  transition={{ 
+                    duration: reducedMotion ? 0 : 1.5, 
+                    delay: 0.5,
+                    ease: PREMIUM_EASING.easeOutQuint
+                  }}
+                  whileHover={!reducedMotion && canHover ? {
+                    scaleX: 1.2,
+                    transition: { duration: 0.3 }
+                  } : {}}
+                />
+                
+                <Typography 
+                  variant="body" 
+                  className={`max-w-3xl mx-auto leading-relaxed ${isMobile ? 'text-lg' : isTablet ? 'text-xl' : 'text-2xl'}`}
+                >
+                  <span>
+                    <TypingAnimation 
+                      text="Have questions, feedback, or partnership ideas? We'd love to hear from you." 
+                      speed={30} 
+                      variant="body"
+                    />
+                  </span>
+                  <motion.span 
+                    className="block mt-3 text-green-600 font-semibold"
+                    style={TYPOGRAPHY_CONFIG.accent}
+                    animate={!reducedMotion ? {
+                      scale: [1, 1.02, 1]
+                    } : {}}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    whileHover={!reducedMotion && canHover ? {
+                      color: "#059669",
+                      scale: 1.05,
+                      transition: { duration: 0.3 }
+                    } : {}}
+                  >
+                    <TypingAnimation 
+                      text="Get in touch with our team." 
+                      speed={40} 
+                      delay={1500}
+                      variant="accent"
+                    />
+                  </motion.span>
+                </Typography>
+              </motion.div>
+            </AntigravityHoverEffect>
           </motion.section>
           
           {/* Contact Form Section */}
@@ -1287,7 +1740,8 @@ const ContactUs = () => {
               whileHover={!reducedMotion ? {
                 y: -8,
                 scale: 1.02,
-                boxShadow: "0 25px 60px rgba(16,185,129,0.2)"
+                boxShadow: "0 25px 60px rgba(16,185,129,0.2)",
+                transition: PREMIUM_SPRINGS.hover
               } : undefined}
               style={{
                 transform: 'translate3d(0,0,0)',
@@ -1319,15 +1773,16 @@ const ContactUs = () => {
             transition={{ delay: 0.3 }}
             className="max-w-3xl mx-auto mt-8 text-center"
           >
-            <p className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Typography variant="body" className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-base'}`}>
               Need immediate assistance? Email us directly at{' '}
               <a 
                 href="mailto:purescan.helpdesk@gmail.com"
                 className="text-green-600 hover:text-green-700 hover:underline font-medium"
+                style={TYPOGRAPHY_CONFIG.accent}
               >
                 purescan.helpdesk@gmail.com
               </a>
-            </p>
+            </Typography>
           </motion.div>
           
           {/* Spacing */}

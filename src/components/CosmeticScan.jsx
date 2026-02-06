@@ -5,6 +5,157 @@ import CosmeticResult from './CosmeticResult';
 import Scanner from './Scanner';
 import { motion } from "framer-motion";
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = React.memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// Typing Animation Component (Updated with new fonts)
+const TypingAnimation = React.memo(({ text, speed = 50, className = "", delay = 0, variant = "body" }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, speed);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setIsComplete(true);
+    }
+  }, [currentIndex, text, speed]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const interval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isComplete]);
+
+  const typographyStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+
+  return (
+    <div className={`inline-flex items-center ${className}`} style={typographyStyle}>
+      <span>{displayedText}</span>
+      {!isComplete && (
+        <motion.div
+          animate={{ 
+            opacity: [1, 0, 1],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            duration: 0.8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-purple-400 to-purple-600"
+        />
+      )}
+      {isComplete && (
+        <motion.span
+          animate={{ opacity: showCursor ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-block w-[2px] h-6 ml-1 bg-gradient-to-b from-purple-400 to-purple-600"
+        />
+      )}
+    </div>
+  );
+});
+
+TypingAnimation.displayName = 'TypingAnimation';
+
+// ============================================
+// MAIN COMPONENT CODE
+// ============================================
+
 // Memoized loading components
 const LoadingIndicator = React.memo(() => (
   <motion.div
@@ -14,7 +165,9 @@ const LoadingIndicator = React.memo(() => (
   >
     <div className="flex flex-col items-center">
       <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
-      <h3 className="text-lg font-bold text-gray-800 mb-2">Analyzing Product</h3>
+      <Typography variant="subheading" className="text-gray-800 mb-2 font-bold">
+        <TypingAnimation text="Analyzing Product" speed={40} variant="subheading" />
+      </Typography>
       <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
         <motion.div 
           className="bg-purple-600 h-2 rounded-full"
@@ -23,17 +176,17 @@ const LoadingIndicator = React.memo(() => (
           transition={{ duration: 2, repeat: Infinity }}
         />
       </div>
-      <p className="text-gray-600 text-sm mb-2">
+      <Typography variant="body" className="text-gray-600 text-sm mb-2">
         Searching database for barcode: <span className="font-mono font-bold">Loading...</span>
-      </p>
+      </Typography>
       <div className="grid grid-cols-2 gap-3 w-full mt-4">
         <div className="p-3 bg-blue-50 rounded-lg">
           <div className="text-blue-500">🔍</div>
-          <p className="text-sm font-medium mt-1">Product Info</p>
+          <Typography variant="accent" className="text-sm font-medium mt-1">Product Info</Typography>
         </div>
         <div className="p-3 bg-purple-50 rounded-lg">
           <div className="text-purple-500">🧪</div>
-          <p className="text-sm font-medium mt-1">Ingredients</p>
+          <Typography variant="accent" className="text-sm font-medium mt-1">Ingredients</Typography>
         </div>
       </div>
     </div>
@@ -47,10 +200,11 @@ const ErrorDisplay = React.memo(({ error, onRetry }) => (
     <div className="flex items-start">
       <span className="text-yellow-600 text-xl mr-3">⚠️</span>
       <div className="text-left">
-        <p className="text-yellow-800 font-medium mb-2">{error}</p>
+        <Typography variant="accent" className="text-yellow-800 font-medium mb-2">{error}</Typography>
         <button 
           onClick={onRetry}
           className="text-sm bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
+          style={TYPOGRAPHY_CONFIG.button}
         >
           Try Again
         </button>
@@ -65,17 +219,20 @@ const ProductNotFound = React.memo(({ barcode, onReset }) => (
   <div className="w-full max-w-md bg-red-50 border border-red-200 rounded-lg p-5 shadow-sm">
     <div className="flex flex-col items-center">
       <span className="text-red-600 text-3xl mb-3">❌</span>
-      <h3 className="text-lg font-bold text-red-700 mb-2">Product Not Found</h3>
-      <p className="text-gray-600 mb-4 text-sm">
+      <Typography variant="subheading" className="text-red-700 mb-2 font-bold">
+        Product Not Found
+      </Typography>
+      <Typography variant="body" className="text-gray-600 mb-4 text-sm">
         This product is not available in our cosmetic databases.
-      </p>
+      </Typography>
       <div className="bg-white p-3 rounded border border-gray-300 mb-4">
-        <p className="text-sm text-gray-500">Scanned Barcode:</p>
-        <p className="font-mono font-bold text-lg">{barcode}</p>
+        <Typography variant="accent" className="text-sm text-gray-500">Scanned Barcode:</Typography>
+        <Typography variant="body" className="font-mono font-bold text-lg">{barcode}</Typography>
       </div>
       <button 
         onClick={onReset}
         className="bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+        style={TYPOGRAPHY_CONFIG.button}
       >
         Scan Another Product
       </button>
@@ -89,17 +246,20 @@ const IncompleteData = React.memo(({ barcode, onReset }) => (
   <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-5 shadow-sm">
     <div className="flex flex-col items-center">
       <span className="text-yellow-600 text-3xl mb-3">⚠️</span>
-      <h3 className="text-lg font-bold text-yellow-700 mb-2">Limited Data Available</h3>
-      <p className="text-gray-600 mb-3 text-sm text-center">
+      <Typography variant="subheading" className="text-yellow-700 mb-2 font-bold">
+        Limited Data Available
+      </Typography>
+      <Typography variant="body" className="text-gray-600 mb-3 text-sm text-center">
         This product has incomplete information in the database.
-      </p>
+      </Typography>
       <div className="bg-white p-3 rounded border border-gray-300 mb-4">
-        <p className="text-sm text-gray-500">Scanned Barcode:</p>
-        <p className="font-mono font-bold text-lg">{barcode}</p>
+        <Typography variant="accent" className="text-sm text-gray-500">Scanned Barcode:</Typography>
+        <Typography variant="body" className="font-mono font-bold text-lg">{barcode}</Typography>
       </div>
       <button 
         onClick={onReset}
         className="bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+        style={TYPOGRAPHY_CONFIG.button}
       >
         Scan Another
       </button>
@@ -118,18 +278,18 @@ const StatusIndicator = React.memo(({ loading, productNotFound, incompleteData, 
         'bg-green-500'
       }`} />
       <div className="text-left">
-        <p className="text-sm text-gray-500">Status</p>
-        <p className="font-medium text-gray-800">
+        <Typography variant="accent" className="text-sm text-gray-500">Status</Typography>
+        <Typography variant="body" className="font-medium text-gray-800">
           {loading ? 'Analyzing...' :
            productNotFound ? 'Product not found' :
            incompleteData ? 'Limited data' :
            'Ready to scan'}
-        </p>
+        </Typography>
       </div>
     </div>
     <div className="text-sm">
-      <span className="text-gray-500">Barcode: </span>
-      <span className="font-mono font-medium">{barcode}</span>
+      <Typography variant="accent" className="text-gray-500">Barcode: </Typography>
+      <Typography variant="body" className="font-mono font-medium">{barcode}</Typography>
     </div>
   </div>
 ));
@@ -558,19 +718,21 @@ const CosmeticScan = () => {
     return (
         <div className="flex flex-col min-h-screen bg-white text-gray-800">
             <main className="flex-grow flex flex-col items-center justify-center px-6 py-12 text-center">
-                <h1 className="text-3xl font-bold text-purple-700 mb-4">Cosmetic Scanner</h1>
-                <p className="text-gray-600 mb-6">
+                <Typography variant="heading" className="text-3xl text-purple-700 mb-4">
+                    <TypingAnimation text="Cosmetic Scanner" speed={40} variant="heading" />
+                </Typography>
+                <Typography variant="body" className="text-gray-600 mb-6">
                     Scan cosmetic product barcode to analyze ingredients and safety.
-                </p>
+                </Typography>
 
                 {showScanner && !loading && !productNotFound && !incompleteData && (
                     <div className="w-full max-w-md">
                         <div className="border rounded-md overflow-hidden shadow-md">
                             <Scanner onScan={handleScan} borderColor="purple" />
                         </div>
-                        <p className="mt-3 text-sm text-gray-500">
+                        <Typography variant="accent" className="mt-3 text-sm text-gray-500">
                             Align barcode within the frame to scan
-                        </p>
+                        </Typography>
                     </div>
                 )}
                 
@@ -594,11 +756,20 @@ const CosmeticScan = () => {
                 {!loading && showScanner && !productNotFound && !incompleteData && (
                     <div className="mt-6 text-sm text-gray-500 max-w-md">
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                            <p className="font-medium text-blue-700 mb-1">How to use:</p>
+                            <Typography variant="accent" className="font-medium text-blue-700 mb-1">How to use:</Typography>
                             <ul className="text-left space-y-1">
-                                <li>• Point camera at cosmetic product barcode</li>
-                                <li>• Hold steady until scan completes</li>
-                                <li>• View ingredient analysis and safety score</li>
+                                <li className="flex items-center gap-1">
+                                    <span className="text-blue-500">•</span>
+                                    <Typography variant="body" className="text-sm">Point camera at cosmetic product barcode</Typography>
+                                </li>
+                                <li className="flex items-center gap-1">
+                                    <span className="text-blue-500">•</span>
+                                    <Typography variant="body" className="text-sm">Hold steady until scan completes</Typography>
+                                </li>
+                                <li className="flex items-center gap-1">
+                                    <span className="text-blue-500">•</span>
+                                    <Typography variant="body" className="text-sm">View ingredient analysis and safety score</Typography>
+                                </li>
                             </ul>
                         </div>
                     </div>

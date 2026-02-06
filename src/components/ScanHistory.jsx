@@ -12,6 +12,96 @@ import {
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import Particles from "react-tsparticles";
 
+// ============================================
+// FONT STYLES & TYPOGRAPHY SYSTEM (SCAN HISTORY PAGE)
+// ============================================
+
+// Google Fonts import
+const loadFonts = () => {
+  if (typeof window !== 'undefined') {
+    // Remove existing font links if any
+    const existingLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    existingLinks.forEach(link => link.remove());
+    
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+};
+
+// Load fonts on initial render
+if (typeof window !== 'undefined') {
+  loadFonts();
+}
+
+// Typography configuration with new fonts
+const TYPOGRAPHY_CONFIG = {
+  heading: {
+    fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    fontFeatureSettings: '"salt" on, "ss01" on'
+  },
+  subheading: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    fontFeatureSettings: '"ss03" on'
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 400,
+    lineHeight: 1.7,
+    letterSpacing: '-0.01em'
+  },
+  accent: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 500,
+    letterSpacing: '0.02em'
+  },
+  button: {
+    fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontWeight: 600,
+    letterSpacing: '0.01em'
+  }
+};
+
+// Typography Component
+const Typography = memo(({ 
+  children, 
+  variant = "body", 
+  className = "",
+  style = {},
+  as: Component = "div",
+  ...props 
+}) => {
+  const baseStyle = TYPOGRAPHY_CONFIG[variant] || TYPOGRAPHY_CONFIG.body;
+  
+  return (
+    <Component
+      className={className}
+      style={{
+        ...baseStyle,
+        ...style,
+        fontFeatureSettings: baseStyle.fontFeatureSettings || 'normal',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+});
+
+Typography.displayName = 'Typography';
+
+// ============================================
+// EXISTING CODE CONTINUES BELOW (NO OTHER CHANGES)
+// ============================================
+
 // Memoized motion configs to prevent re-renders
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -202,9 +292,9 @@ const ScanItem = memo(({ scan, isMobile, onDelete }) => {
       <GlowingCard glowColor={glowColor} isMobile={isMobile}>
         <div className={`space-y-${isMobile ? '2' : '3'}`}>
           <div className="flex justify-between items-start gap-2">
-            <h3 className={`font-bold text-gray-800 truncate ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Typography as="h3" variant="subheading" className="text-gray-800 truncate flex-1">
               {scan.productName || "Unknown Product"}
-            </h3>
+            </Typography>
             <motion.span
               whileHover={!isMobile ? { scale: 1.1 } : {}}
               whileTap={{ scale: 0.95 }}
@@ -221,18 +311,18 @@ const ScanItem = memo(({ scan, isMobile, onDelete }) => {
           </div>
           
           <div className={`text-gray-600 space-y-${isMobile ? '1' : '2'}`}>
-            <p className={`flex items-center gap-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+            <Typography variant="body" className="flex items-center gap-1">
               <span className="font-medium">Barcode:</span>
               <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
                 {scan.barcode || "N/A"}
               </span>
-            </p>
+            </Typography>
             
             {scan.nutritionScore && (
               <div className="flex items-center gap-2">
-                <span className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                <Typography variant="accent" className="font-medium">
                   {scan.type === "cosmetic" ? "Safety Score:" : "Nutrition Score:"}
-                </span>
+                </Typography>
                 <motion.span
                   whileHover={!isMobile ? { scale: 1.05 } : {}}
                   className="relative inline-block"
@@ -252,9 +342,9 @@ const ScanItem = memo(({ scan, isMobile, onDelete }) => {
               </div>
             )}
             
-            <p className={`text-gray-500 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+            <Typography variant="body" className={`text-gray-500 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
               <span className="font-medium">Scanned At:</span> {scanTime}
-            </p>
+            </Typography>
           </div>
           
           {scan.image && (
@@ -288,6 +378,7 @@ const ScanItem = memo(({ scan, isMobile, onDelete }) => {
               bg-gradient-to-r from-red-500 to-rose-500 hover:shadow-md transition-all duration-200 ${
                 isMobile ? 'text-xs w-full' : ''
               }`}
+            style={TYPOGRAPHY_CONFIG.button}
           >
             Delete Scan
           </motion.button>
@@ -312,6 +403,7 @@ const ClearAllButtonDesktop = memo(({ isDeletingAll, onClick }) => (
           ? 'bg-gradient-to-r from-gray-500 to-gray-400 cursor-not-allowed' 
           : 'bg-gradient-to-r from-rose-500 to-red-500'
       }`}
+    style={TYPOGRAPHY_CONFIG.button}
   >
     {isDeletingAll ? (
       <>
@@ -340,6 +432,7 @@ const ClearAllButtonMobile = memo(({ isDeletingAll, onClick, scansLength }) => (
           ? 'bg-gradient-to-r from-gray-500 to-gray-400 cursor-not-allowed' 
           : 'bg-gradient-to-r from-rose-500 to-red-500'
       }`}
+    style={TYPOGRAPHY_CONFIG.button}
   >
     {isDeletingAll ? (
       <>
@@ -709,7 +802,7 @@ function ScanHistory() {
       onClick={handleInteraction}
       onTouchStart={handleInteraction}
       onTouchMove={handleMove}
-      className="relative min-h-screen bg-gradient-to-br from-white via-green-50/80 to-emerald-50/60 overflow-hidden font-sans cursor-default"
+      className="relative min-h-screen bg-gradient-to-br from-white via-green-50/80 to-emerald-50/60 overflow-hidden cursor-default"
       style={{
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'pan-y'
@@ -794,7 +887,7 @@ function ScanHistory() {
         transition={{ duration: 0.8 }}
         className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-screen-md mx-auto"
       >
-                 {/* TITLE */}
+        {/* TITLE */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -821,7 +914,9 @@ function ScanHistory() {
               font-extrabold tracking-wide text-center will-change-transform
               ${isMobile ? 'text-2xl' : 'text-3xl'}
             `}
+            style={TYPOGRAPHY_CONFIG.heading}
             style={{
+              ...TYPOGRAPHY_CONFIG.heading,
               background: 'linear-gradient(90deg, #059669, #10B981, #34D399, #10B981, #059669)',
               backgroundSize: '200% 200%',
               WebkitBackgroundClip: 'text',
@@ -830,7 +925,7 @@ function ScanHistory() {
               color: 'transparent',
             }}
           >
-             Scan History
+            Scan History
           </motion.h2>
 
           <motion.div
@@ -861,13 +956,9 @@ function ScanHistory() {
               />
               <div className="relative text-6xl">📦</div>
             </div>
-            <motion.p
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-base'}`}
-            >
+            <Typography variant="body" className="text-gray-600">
               No scans found. Try scanning a product!
-            </motion.p>
+            </Typography>
             <motion.div
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -879,6 +970,7 @@ function ScanHistory() {
                 className={`inline-flex items-center gap-2 text-green-600 font-medium ${
                   isMobile ? 'text-sm' : ''
                 }`}
+                style={TYPOGRAPHY_CONFIG.accent}
               >
                 <span>Start Scanning</span>
                 <motion.span
@@ -919,18 +1011,18 @@ function ScanHistory() {
             className="mt-6 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-green-100/50"
           >
             <div className="text-center space-y-2">
-              <p className="text-sm font-medium text-green-700">
+              <Typography variant="accent" className="text-green-700 font-medium">
                 {scans.length} scan{scans.length !== 1 ? 's' : ''} total
-              </p>
+              </Typography>
               <div className="flex justify-center gap-4 text-xs text-gray-600">
-                <span className="flex items-center gap-1">
+                <Typography variant="body" className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-green-500"></span>
                   Food: {scans.filter(s => s.type === 'food').length}
-                </span>
-                <span className="flex items-center gap-1">
+                </Typography>
+                <Typography variant="body" className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-pink-500"></span>
                   Cosmetic: {scans.filter(s => s.type === 'cosmetic').length}
-                </span>
+                </Typography>
               </div>
             </div>
           </motion.div>
